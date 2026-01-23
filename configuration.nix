@@ -6,8 +6,6 @@
       ./hardware-configuration.nix
     ];
 
-  systemd.defaultUnit = "multi-user.target";
-
   programs.ssh.startAgent = true;
 
   # only for VMWare
