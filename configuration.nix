@@ -1,7 +1,7 @@
 { config, pkgs, ... }:
 
 {
-  imports = [ ./hardware-configuration.nix ];
+  imports = [ /etc/nixos/hardware-configuration.nix ];
 
   programs.ssh.startAgent = true;
   virtualisation.vmware.guest.enable = true;

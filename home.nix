@@ -3,6 +3,7 @@
 {
   home.username = "mikhailtsai";
   home.homeDirectory = "/home/mikhailtsai";
+  home.stateVersion = "25.11";
 
   programs.kitty = {
     enable = true;
