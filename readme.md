@@ -58,15 +58,15 @@ echo "experimental-features = nix-command flakes" > ~/.config/nix/nix.conf
 
 ```bash
 nix-shell -p git
-cd /mnt/etc
-sudo git clone https://github.com/YOUR_USERNAME/nixos-tsai.git nixos
-cd nixos
+sudo git clone https://github.com/YOUR_USERNAME/nixos-tsai.git /mnt/etc/nixos
+sudo chown -R $(whoami):users /mnt/etc/nixos
+cd /mnt/etc/nixos
 ```
 
 ### 5. Генерация hardware-configuration.nix
 
 ```bash
-sudo nixos-generate-config --show-hardware-config | sudo tee hardware-configuration.nix > /dev/null
+nixos-generate-config --root /mnt --show-hardware-config > hardware-configuration.nix
 git add hardware-configuration.nix
 ```
 
