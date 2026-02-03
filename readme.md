@@ -58,7 +58,7 @@ echo "experimental-features = nix-command flakes" > ~/.config/nix/nix.conf
 
 ```bash
 nix-shell -p git
-sudo git clone https://github.com/YOUR_USERNAME/nixos-tsai.git /mnt/etc/nixos
+sudo git clone https://github.com/mikhailtsai/nixos-tsai.git /mnt/etc/nixos
 sudo chown -R $(whoami):users /mnt/etc/nixos
 cd /mnt/etc/nixos
 ```
