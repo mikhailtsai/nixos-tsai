@@ -1,5 +1,5 @@
 # =============================================================================
-# VMWARE.NIX — профиль для VMware с nested Hyprland
+# VMWARE.NIX — профиль для VMware с нативным Hyprland
 # =============================================================================
 
 { config, pkgs, lib, ... }:
@@ -21,26 +21,6 @@
   };
 
   # ===========================================================================
-  # Отключаем greetd из основного конфига
-  # ===========================================================================
-  services.greetd.enable = lib.mkForce false;
-
-  # ===========================================================================
-  # X11 — минимальная настройка для startx
-  # ===========================================================================
-  services.xserver = {
-    enable = true;
-    # Без явного драйвера — автовыбор (modesetting/fbdev)
-    windowManager.openbox.enable = true;
-    displayManager.startx.enable = true;
-  };
-
-  # ===========================================================================
-  # Autologin в tty1
-  # ===========================================================================
-  services.getty.autologinUser = "leet";
-
-  # ===========================================================================
   # Графика
   # ===========================================================================
   hardware.graphics = {
@@ -53,42 +33,33 @@
   boot.kernelModules = [ "vmwgfx" ];
 
   # ===========================================================================
-  # Переменные окружения для wlroots
+  # Отключаем greetd из основного конфига, используем свой
+  # ===========================================================================
+  services.greetd.enable = lib.mkForce false;
+
+  # ===========================================================================
+  # Autologin + автозапуск Hyprland
+  # ===========================================================================
+  services.getty.autologinUser = "leet";
+
+  # ===========================================================================
+  # Переменные окружения для Hyprland в VMware
   # ===========================================================================
   environment.variables = {
-    WLR_NO_HARDWARE_CURSORS = "1";
-    WLR_RENDERER_ALLOW_SOFTWARE = "1";
     WLR_RENDERER = "pixman";
+    WLR_NO_HARDWARE_CURSORS = "1";
     LIBGL_ALWAYS_SOFTWARE = "1";
+    GALLIUM_DRIVER = "llvmpipe";
+    GBM_BACKEND = "dri";
   };
 
   # ===========================================================================
-  # Пакеты и скрипты
+  # Скрипт запуска
   # ===========================================================================
   environment.systemPackages = with pkgs; [
-    openbox
-    xterm
     mesa-demos
 
-    # Nested режим (из X11)
-    (pkgs.writeShellScriptBin "hyprland-nested" ''
-      export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-      if [ ! -d "$XDG_RUNTIME_DIR" ]; then
-        sudo mkdir -p "$XDG_RUNTIME_DIR"
-        sudo chown $(id -u):$(id -g) "$XDG_RUNTIME_DIR"
-        sudo chmod 700 "$XDG_RUNTIME_DIR"
-      fi
-
-      export WLR_BACKENDS=x11
-      export WLR_RENDERER=pixman
-      export WLR_NO_HARDWARE_CURSORS=1
-      export LIBGL_ALWAYS_SOFTWARE=1
-      export GALLIUM_DRIVER=llvmpipe
-      exec Hyprland
-    '')
-
-    # Нативный режим (из TTY, без X11)
-    (pkgs.writeShellScriptBin "hyprland-native" ''
+    (pkgs.writeShellScriptBin "hyprland-vmware" ''
       export XDG_RUNTIME_DIR="/run/user/$(id -u)"
       if [ ! -d "$XDG_RUNTIME_DIR" ]; then
         sudo mkdir -p "$XDG_RUNTIME_DIR"
@@ -106,17 +77,11 @@
   ];
 
   # ===========================================================================
-  # .xinitrc для startx — запускает Hyprland в nested режиме
+  # Автозапуск Hyprland при логине в TTY1
   # ===========================================================================
-  environment.etc."skel/.xinitrc".text = ''
-    exec hyprland-nested
-  '';
-
-  # Для существующего пользователя
-  system.activationScripts.xinitrc = ''
-    if [ ! -f /home/leet/.xinitrc ]; then
-      echo 'exec hyprland-nested' > /home/leet/.xinitrc
-      chown leet:users /home/leet/.xinitrc
+  programs.bash.loginShellInit = ''
+    if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" = "1" ]; then
+      exec hyprland-vmware
     fi
   '';
 
