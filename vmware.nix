@@ -52,8 +52,6 @@
 
   hardware.opengl = {
     enable = true;
-    driSupport = true;
-    driSupport32Bit = true;
   };
 
   # Увеличиваем таймауты для виртуальной среды
