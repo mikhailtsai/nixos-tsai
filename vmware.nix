@@ -54,6 +54,13 @@
     enable = true;
   };
 
+  programs.hyprland = {
+    enable = true;
+    xwayland.enable = true;
+  };
+
+  boot.kernelModules = [ "vmwgfx" ];
+
   # Увеличиваем таймауты для виртуальной среды
   systemd.services.NetworkManager-wait-online.serviceConfig.TimeoutStartSec = "60s";
 }
