@@ -64,6 +64,16 @@
     xterm
 
     (pkgs.writeShellScriptBin "hyprland-nested" ''
+      # XDG runtime dir — обязательно для Wayland
+      export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+
+      # Создаём если нет
+      if [ ! -d "$XDG_RUNTIME_DIR" ]; then
+        sudo mkdir -p "$XDG_RUNTIME_DIR"
+        sudo chown $(id -u):$(id -g) "$XDG_RUNTIME_DIR"
+        sudo chmod 700 "$XDG_RUNTIME_DIR"
+      fi
+
       export WLR_BACKENDS=x11
       export WLR_RENDERER_ALLOW_SOFTWARE=1
       export WLR_RENDERER=pixman
