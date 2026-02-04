@@ -3,20 +3,33 @@
 {
   # Конфигурация Hyprland
   xdg.configFile."hypr/hyprland.conf".text = ''
-    # Монитор
+    # ==========================================================================
+    # МОНИТОР
+    # ==========================================================================
     monitor = ,preferred,auto,1
 
-    # Переменные окружения
+    # ==========================================================================
+    # ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
+    # ==========================================================================
     env = XCURSOR_SIZE,24
     env = QT_QPA_PLATFORMTHEME,qt5ct
 
-    # Автозапуск
+    # ==========================================================================
+    # АВТОЗАПУСК
+    # ==========================================================================
     exec-once = waybar
     exec-once = nm-applet --indicator
     exec-once = hyprpaper
     exec-once = hypridle
+    exec-once = mako
+    exec-once = wl-paste --type text --watch cliphist store
+    exec-once = wl-paste --type image --watch cliphist store
+    exec-once = swayosd-server
+    exec-once = blueman-applet
 
-    # Настройки ввода
+    # ==========================================================================
+    # НАСТРОЙКИ ВВОДА
+    # ==========================================================================
     input {
       kb_layout = us,ru
       kb_options = grp:alt_shift_toggle
@@ -27,7 +40,9 @@
       sensitivity = 0
     }
 
-    # Основные настройки
+    # ==========================================================================
+    # ОСНОВНЫЕ НАСТРОЙКИ
+    # ==========================================================================
     general {
       gaps_in = 5
       gaps_out = 10
@@ -37,7 +52,9 @@
       layout = dwindle
     }
 
-    # Декорации
+    # ==========================================================================
+    # ДЕКОРАЦИИ
+    # ==========================================================================
     decoration {
       rounding = 10
       blur {
@@ -53,45 +70,135 @@
       }
     }
 
-    # Анимации
+    # ==========================================================================
+    # АНИМАЦИИ
+    # ==========================================================================
     animations {
       enabled = true
       bezier = myBezier, 0.05, 0.9, 0.1, 1.05
-      animation = windows, 1, 7, myBezier
-      animation = windowsOut, 1, 7, default, popin 80%
+      bezier = smooth, 0.25, 0.1, 0.25, 1
+      bezier = snappy, 0.4, 0, 0.2, 1
+      animation = windows, 1, 5, snappy
+      animation = windowsOut, 1, 5, default, popin 80%
       animation = border, 1, 10, default
       animation = borderangle, 1, 8, default
-      animation = fade, 1, 7, default
-      animation = workspaces, 1, 6, default
+      animation = fade, 1, 5, smooth
+      animation = workspaces, 1, 4, snappy, slide
     }
 
-    # Layout
+    # ==========================================================================
+    # LAYOUT
+    # ==========================================================================
     dwindle {
       pseudotile = true
       preserve_split = true
+      smart_split = false
+      smart_resizing = true
     }
 
-    # Горячие клавиши
+    master {
+      new_status = master
+    }
+
+    misc {
+      force_default_wallpaper = 0
+      disable_hyprland_logo = true
+    }
+
+    # ==========================================================================
+    # ГОРЯЧИЕ КЛАВИШИ — ОСНОВНЫЕ
+    # ==========================================================================
     $mod = SUPER
 
+    # Приложения
     bind = $mod, RETURN, exec, kitty
     bind = $mod, Q, killactive,
-    bind = $mod, M, exit,
     bind = $mod, E, exec, nautilus
-    bind = $mod, V, togglefloating,
     bind = $mod, D, exec, wofi --show drun
+    bind = $mod, R, exec, wofi --show run
+    bind = $mod, L, exec, hyprlock
+    bind = $mod, B, exec, firefox
+
+    # Меню выхода / выключения
+    bind = $mod, M, exec, wlogout
+    bind = $mod SHIFT, M, exit,
+
+    # История буфера обмена
+    bind = $mod, X, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy
+
+    # Пипетка цветов
+    bind = $mod SHIFT, C, exec, hyprpicker -a
+
+    # Состояние окна
+    bind = $mod, V, togglefloating,
+    bind = $mod, F, fullscreen, 0
+    bind = $mod SHIFT, F, fullscreen, 1
     bind = $mod, P, pseudo,
     bind = $mod, J, togglesplit,
-    bind = $mod, F, fullscreen,
-    bind = $mod, L, exec, hyprlock
+    bind = $mod, G, togglegroup,
+    bind = $mod, TAB, changegroupactive, f
+    bind = $mod SHIFT, TAB, changegroupactive, b
 
-    # Переключение фокуса
+    # Pin окно (поверх всех)
+    bind = $mod, T, pin,
+
+    # Центрировать плавающее окно
+    bind = $mod, C, centerwindow,
+
+    # ==========================================================================
+    # НАВИГАЦИЯ — ФОКУС
+    # ==========================================================================
     bind = $mod, left, movefocus, l
     bind = $mod, right, movefocus, r
     bind = $mod, up, movefocus, u
     bind = $mod, down, movefocus, d
 
-    # Рабочие столы
+    # Альтернатива HJKL (vim-style)
+    bind = $mod, H, movefocus, l
+    bind = $mod, K, movefocus, u
+    bind = ALT, J, movefocus, d
+
+    # Циклический фокус
+    bind = ALT, TAB, cyclenext,
+    bind = ALT SHIFT, TAB, cyclenext, prev
+
+    # ==========================================================================
+    # ПЕРЕМЕЩЕНИЕ ОКОН
+    # ==========================================================================
+    bind = $mod SHIFT, left, movewindow, l
+    bind = $mod SHIFT, right, movewindow, r
+    bind = $mod SHIFT, up, movewindow, u
+    bind = $mod SHIFT, down, movewindow, d
+
+    # Vim-style
+    bind = $mod SHIFT, H, movewindow, l
+    bind = $mod SHIFT, L, movewindow, r
+    bind = $mod SHIFT, K, movewindow, u
+    bind = $mod SHIFT, J, movewindow, d
+
+    # Swap с соседом
+    bind = $mod CTRL SHIFT, left, swapwindow, l
+    bind = $mod CTRL SHIFT, right, swapwindow, r
+    bind = $mod CTRL SHIFT, up, swapwindow, u
+    bind = $mod CTRL SHIFT, down, swapwindow, d
+
+    # ==========================================================================
+    # ИЗМЕНЕНИЕ РАЗМЕРА ОКОН
+    # ==========================================================================
+    bind = $mod CTRL, left, resizeactive, -50 0
+    bind = $mod CTRL, right, resizeactive, 50 0
+    bind = $mod CTRL, up, resizeactive, 0 -50
+    bind = $mod CTRL, down, resizeactive, 0 50
+
+    # Vim-style
+    bind = $mod CTRL, H, resizeactive, -50 0
+    bind = $mod CTRL, L, resizeactive, 50 0
+    bind = $mod CTRL, K, resizeactive, 0 -50
+    bind = $mod CTRL, J, resizeactive, 0 50
+
+    # ==========================================================================
+    # РАБОЧИЕ СТОЛЫ
+    # ==========================================================================
     bind = $mod, 1, workspace, 1
     bind = $mod, 2, workspace, 2
     bind = $mod, 3, workspace, 3
@@ -103,7 +210,17 @@
     bind = $mod, 9, workspace, 9
     bind = $mod, 0, workspace, 10
 
-    # Перемещение окон на рабочие столы
+    # Навигация колесом мыши
+    bind = $mod, mouse_down, workspace, e+1
+    bind = $mod, mouse_up, workspace, e-1
+
+    # Следующий/предыдущий рабочий стол
+    bind = $mod, bracketright, workspace, e+1
+    bind = $mod, bracketleft, workspace, e-1
+
+    # ==========================================================================
+    # ПЕРЕМЕЩЕНИЕ ОКОН НА РАБОЧИЕ СТОЛЫ
+    # ==========================================================================
     bind = $mod SHIFT, 1, movetoworkspace, 1
     bind = $mod SHIFT, 2, movetoworkspace, 2
     bind = $mod SHIFT, 3, movetoworkspace, 3
@@ -115,22 +232,111 @@
     bind = $mod SHIFT, 9, movetoworkspace, 9
     bind = $mod SHIFT, 0, movetoworkspace, 10
 
-    # Мышь
+    # Переместить и следовать
+    bind = $mod ALT, 1, movetoworkspacesilent, 1
+    bind = $mod ALT, 2, movetoworkspacesilent, 2
+    bind = $mod ALT, 3, movetoworkspacesilent, 3
+    bind = $mod ALT, 4, movetoworkspacesilent, 4
+    bind = $mod ALT, 5, movetoworkspacesilent, 5
+
+    # ==========================================================================
+    # SCRATCHPAD (специальный скрытый рабочий стол)
+    # ==========================================================================
+    bind = $mod, S, togglespecialworkspace, magic
+    bind = $mod SHIFT, S, movetoworkspace, special:magic
+
+    # ==========================================================================
+    # МЫШЬ
+    # ==========================================================================
     bindm = $mod, mouse:272, movewindow
     bindm = $mod, mouse:273, resizewindow
 
-    # Скриншоты
+    # ==========================================================================
+    # СКРИНШОТЫ
+    # ==========================================================================
+    # Область → буфер обмена
     bind = , Print, exec, grim -g "$(slurp)" - | wl-copy
+    # Весь экран → буфер обмена
     bind = SHIFT, Print, exec, grim - | wl-copy
+    # Область → редактор swappy → сохранить/скопировать
+    bind = $mod, Print, exec, grim -g "$(slurp)" - | swappy -f -
+    # Весь экран → редактор swappy
+    bind = $mod SHIFT, Print, exec, grim - | swappy -f -
+    # Активное окно → буфер
+    bind = ALT, Print, exec, hyprctl -j activewindow | jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | grim -g - - | wl-copy
 
-    # Аудио
-    bindel = , XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
-    bindel = , XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
-    bindel = , XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+    # ==========================================================================
+    # АУДИО (с swayosd для красивого OSD)
+    # ==========================================================================
+    bindel = , XF86AudioRaiseVolume, exec, swayosd-client --output-volume raise
+    bindel = , XF86AudioLowerVolume, exec, swayosd-client --output-volume lower
+    bindel = , XF86AudioMute, exec, swayosd-client --output-volume mute-toggle
+    bindel = , XF86AudioMicMute, exec, swayosd-client --input-volume mute-toggle
 
-    # Яркость
-    bindel = , XF86MonBrightnessUp, exec, brightnessctl s 5%+
-    bindel = , XF86MonBrightnessDown, exec, brightnessctl s 5%-
+    # ==========================================================================
+    # ЯРКОСТЬ (с swayosd для красивого OSD)
+    # ==========================================================================
+    bindel = , XF86MonBrightnessUp, exec, swayosd-client --brightness raise
+    bindel = , XF86MonBrightnessDown, exec, swayosd-client --brightness lower
+
+    # ==========================================================================
+    # CAPS LOCK OSD
+    # ==========================================================================
+    bindr = , Caps_Lock, exec, swayosd-client --caps-lock
+
+    # ==========================================================================
+    # ПРАВИЛА ДЛЯ ОКОН
+    # ==========================================================================
+    # Плавающие окна для диалогов
+    windowrulev2 = float, class:^(pavucontrol)$
+    windowrulev2 = float, class:^(nm-connection-editor)$
+    windowrulev2 = float, class:^(blueman-manager)$
+    windowrulev2 = float, class:^(.blueman-manager-wrapped)$
+    windowrulev2 = float, title:^(Open File)$
+    windowrulev2 = float, title:^(Save File)$
+    windowrulev2 = float, title:^(Volume Control)$
+    windowrulev2 = float, class:^(imv)$
+    windowrulev2 = float, class:^(mpv)$
+    windowrulev2 = float, class:^(gnome-calculator)$
+    windowrulev2 = float, class:^(org.gnome.Calculator)$
+    windowrulev2 = float, title:^(Picture-in-Picture)$
+    windowrulev2 = float, class:^(xdg-desktop-portal-gtk)$
+
+    # Размеры для плавающих
+    windowrulev2 = size 800 600, class:^(pavucontrol)$
+    windowrulev2 = size 800 600, class:^(blueman-manager)$
+
+    # Центрировать плавающие
+    windowrulev2 = center, floating:1
+
+    # Прозрачность только для терминала
+    windowrulev2 = opacity 0.95, class:^(kitty)$
+
+    # Picture-in-Picture поверх всех
+    windowrulev2 = pin, title:^(Picture-in-Picture)$
+    windowrulev2 = keepaspectratio, title:^(Picture-in-Picture)$
+
+    # Steam
+    windowrulev2 = float, class:^(steam)$, title:^(Friends List)$
+    windowrulev2 = float, class:^(steam)$, title:^(Steam Settings)$
+
+    # Игры на полный экран
+    windowrulev2 = fullscreen, class:^(steam_app_.*)$
+    windowrulev2 = immediate, class:^(steam_app_.*)$
+
+    # Отключить blur для видео
+    windowrulev2 = noblur, class:^(mpv)$
+    windowrulev2 = noblur, fullscreen:1
+
+    # ==========================================================================
+    # ЖЕСТЫ ТАЧПАДА
+    # ==========================================================================
+    gestures {
+      workspace_swipe = true
+      workspace_swipe_fingers = 3
+      workspace_swipe_distance = 300
+      workspace_swipe_cancel_ratio = 0.5
+    }
   '';
 
   # Hypridle - автоблокировка
