@@ -11,7 +11,7 @@
   virtualisation.vmware.guest.enable = true;
 
   # ===========================================================================
-  # Загрузчик — GRUB для BIOS (VMware по умолчанию)
+  # Загрузчик — GRUB для BIOS
   # ===========================================================================
   boot.loader.systemd-boot.enable = lib.mkForce false;
   boot.loader.efi.canTouchEfiVariables = lib.mkForce false;
@@ -21,29 +21,24 @@
   };
 
   # ===========================================================================
-  # Отключаем greetd из основного конфига — он не работает с nested
+  # Отключаем greetd из основного конфига
   # ===========================================================================
   services.greetd.enable = lib.mkForce false;
 
   # ===========================================================================
-  # X11 + LightDM — база для nested Hyprland
+  # X11 — минимальная настройка для startx
   # ===========================================================================
   services.xserver = {
     enable = true;
     videoDrivers = [ "vmware" ];
-
-    # Openbox как легковесный fallback WM
     windowManager.openbox.enable = true;
+    displayManager.startx.enable = true;
   };
 
-  services.displayManager = {
-    defaultSession = "none+openbox";
-  };
-
-  services.xserver.displayManager.lightdm = {
-    enable = true;
-    greeters.slick.enable = true;
-  };
+  # ===========================================================================
+  # Autologin в tty1
+  # ===========================================================================
+  services.getty.autologinUser = "leet";
 
   # ===========================================================================
   # Графика
@@ -52,32 +47,22 @@
   boot.kernelModules = [ "vmwgfx" ];
 
   # ===========================================================================
-  # Переменные окружения для wlroots в VMware
+  # Переменные окружения для wlroots
   # ===========================================================================
   environment.variables = {
-    # Курсоры — обязательно для VMware
     WLR_NO_HARDWARE_CURSORS = "1";
-
-    # Software renderer для wlroots (решает "no renderer")
     WLR_RENDERER_ALLOW_SOFTWARE = "1";
     WLR_RENDERER = "pixman";
-
-    # X11 backend для nested режима
-    WLR_BACKENDS = "x11";
-
-    # Mesa software rendering как fallback
     LIBGL_ALWAYS_SOFTWARE = "1";
   };
 
   # ===========================================================================
-  # Скрипт запуска Hyprland (nested)
+  # Пакеты и скрипты
   # ===========================================================================
   environment.systemPackages = with pkgs; [
-    # Для X11 сессии
     openbox
     xterm
 
-    # Скрипт запуска nested Hyprland
     (pkgs.writeShellScriptBin "hyprland-nested" ''
       export WLR_BACKENDS=x11
       export WLR_RENDERER_ALLOW_SOFTWARE=1
@@ -89,15 +74,22 @@
   ];
 
   # ===========================================================================
-  # Autostart Hyprland в Openbox
+  # .xinitrc для startx — запускает Hyprland в nested режиме
   # ===========================================================================
-  environment.etc."xdg/openbox/autostart".text = ''
-    # Запускаем nested Hyprland сразу после входа в Openbox
-    hyprland-nested &
+  environment.etc."skel/.xinitrc".text = ''
+    exec hyprland-nested
+  '';
+
+  # Для существующего пользователя
+  system.activationScripts.xinitrc = ''
+    if [ ! -f /home/leet/.xinitrc ]; then
+      echo 'exec hyprland-nested' > /home/leet/.xinitrc
+      chown leet:users /home/leet/.xinitrc
+    fi
   '';
 
   # ===========================================================================
-  # Увеличиваем таймауты для VM
+  # Таймауты
   # ===========================================================================
   systemd.services.NetworkManager-wait-online.serviceConfig.TimeoutStartSec = "60s";
 }
