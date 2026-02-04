@@ -33,7 +33,9 @@
   # Git
   programs.git = {
     enable = true;
-    userName = "Mikhail Tsai";
-    userEmail = ""; # Добавь свой email
+    settings.user = {
+      name = "Mikhail Tsai";
+      email = ""; # Добавь свой email
+    };
   };
 }
