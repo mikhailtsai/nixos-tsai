@@ -45,7 +45,7 @@
   };
 
   # Пользователь
-  users.users.mikhailtsai = {
+  users.users.leet = {
     isNormalUser = true;
     description = "Mikhail Tsai";
     extraGroups = [ "networkmanager" "wheel" "video" "audio" ];

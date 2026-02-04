@@ -63,11 +63,12 @@ sudo chown -R $(whoami):users /mnt/etc/nixos
 cd /mnt/etc/nixos
 ```
 
+
 ### 5. Генерация hardware-configuration.nix
 
 ```bash
-nixos-generate-config --root /mnt --show-hardware-config > hardware-configuration.nix
-git add hardware-configuration.nix
+sudo nixos-generate-config --root /mnt --show-hardware-config | sudo tee hardware-configuration.nix > /dev/null
+sudo git add hardware-configuration.nix
 ```
 
 ### 6. Установка

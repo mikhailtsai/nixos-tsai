@@ -18,7 +18,7 @@
         {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
-          home-manager.users.mikhailtsai = import ./home.nix;
+          home-manager.users.leet = import ./home.nix;
         }
       ];
     in

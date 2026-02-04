@@ -204,8 +204,8 @@
 
   # Hyprpaper - обои
   xdg.configFile."hypr/hyprpaper.conf".text = ''
-    preload = /home/mikhailtsai/.config/hypr/wallpaper.png
-    wallpaper = ,/home/mikhailtsai/.config/hypr/wallpaper.png
+    preload = /home/leet/.config/hypr/wallpaper.png
+    wallpaper = ,/home/leet/.config/hypr/wallpaper.png
     splash = false
   '';
 }

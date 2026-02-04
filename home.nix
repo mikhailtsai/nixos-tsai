@@ -6,8 +6,8 @@
     ./home/waybar.nix
   ];
 
-  home.username = "mikhailtsai";
-  home.homeDirectory = "/home/mikhailtsai";
+  home.username = "leet";
+  home.homeDirectory = "/home/leet";
   home.stateVersion = "25.11";
 
   # Позволяем Home Manager управлять собой
