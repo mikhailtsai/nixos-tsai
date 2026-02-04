@@ -47,7 +47,6 @@
     enable = true;
     extraPackages = with pkgs; [
       mesa
-      mesa.drivers
       libva
     ];
   };
@@ -69,7 +68,7 @@
   environment.systemPackages = with pkgs; [
     openbox
     xterm
-    glxinfo
+    mesa-demos
 
     # Nested режим (из X11)
     (pkgs.writeShellScriptBin "hyprland-nested" ''
