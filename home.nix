@@ -10,6 +10,13 @@
   home.homeDirectory = "/home/leet";
   home.stateVersion = "25.11";
 
+  # ===========================================================================
+  # ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
+  # ===========================================================================
+  home.sessionVariables = {
+    CHROME_EXECUTABLE = "${pkgs.chromium}/bin/chromium";
+  };
+
   # Позволяем Home Manager управлять собой
   programs.home-manager.enable = true;
 
@@ -38,9 +45,9 @@
   # ===========================================================================
   programs.git = {
     enable = true;
-    userName = "Mikhail Tsai";
-    userEmail = ""; # Добавь свой email
-    extraConfig = {
+    settings = {
+      user.name = "Mikhail Tsai";
+      user.email = ""; # Добавь свой email
       init.defaultBranch = "main";
       pull.rebase = false;
       core.editor = "code --wait";
@@ -64,6 +71,10 @@
       gp = "git push";
       gl = "git pull";
     };
+    initExtra = ''
+      # fnm — переключение версий Node.js
+      eval "$(fnm env --use-on-cd)"
+    '';
   };
 
   # ===========================================================================
@@ -100,6 +111,9 @@
   # ДОПОЛНИТЕЛЬНЫЕ ПАКЕТЫ ПОЛЬЗОВАТЕЛЯ
   # ===========================================================================
   home.packages = with pkgs; [
+    # Node.js — управление версиями (fnm install --lts)
+    fnm
+
     # CLI утилиты
     eza           # современный ls
     bat           # cat с подсветкой
@@ -174,20 +188,22 @@
   # ===========================================================================
   services.mako = {
     enable = true;
-    defaultTimeout = 5000;
-    borderRadius = 10;
-    borderSize = 2;
-    borderColor = "#33ccff";
-    backgroundColor = "#1a1a1aee";
-    textColor = "#d0d0d0";
-    font = "FiraCode Nerd Font 11";
-    width = 350;
-    height = 100;
-    margin = "10";
-    padding = "15";
-    icons = true;
-    maxIconSize = 48;
-    layer = "overlay";
+    settings = {
+      default-timeout = 5000;
+      border-radius = 10;
+      border-size = 2;
+      border-color = "#33ccff";
+      background-color = "#1a1a1aee";
+      text-color = "#d0d0d0";
+      font = "FiraCode Nerd Font 11";
+      width = 350;
+      height = 100;
+      margin = 10;
+      padding = 15;
+      icons = true;
+      max-icon-size = 48;
+      layer = "overlay";
+    };
   };
 
   # ===========================================================================

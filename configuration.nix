@@ -175,12 +175,27 @@
     # -------------------------------------------------------------------------
     dbeaver-bin
     postman
-    nodejs
     python3
     rustup
     gcc
     gnumake
+    cmake
+    ninja
+    pkg-config
+    clang
     ranger             # файловый менеджер TUI
+
+    # -------------------------------------------------------------------------
+    # Веб-разработка
+    # -------------------------------------------------------------------------
+    chromium           # для тестирования и Flutter web
+
+    # -------------------------------------------------------------------------
+    # Flutter / мобильная разработка
+    # -------------------------------------------------------------------------
+    flutter
+    android-studio
+    android-tools      # adb, fastboot
 
     # -------------------------------------------------------------------------
     # Игры
@@ -316,6 +331,14 @@
     ${pkgs.flatpak}/bin/flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
     ${pkgs.flatpak}/bin/flatpak install -y --noninteractive flathub com.usebottles.bottles || true
   '';
+
+  # ===========================================================================
+  # JAVA (для Flutter / Android)
+  # ===========================================================================
+  programs.java = {
+    enable = true;
+    package = pkgs.jdk17;
+  };
 
   # ===========================================================================
   # VIRTUALISATION (для Docker и т.д.)
