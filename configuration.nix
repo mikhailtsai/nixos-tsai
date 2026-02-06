@@ -207,7 +207,6 @@
     wesnoth
     dwarf-fortress
     xonotic
-    vessel
     ultrastardx          # UltraStar Deluxe
 
     # -------------------------------------------------------------------------
