@@ -3,7 +3,17 @@
     "allow": [
       "Bash(dir:*)",
       "WebSearch",
-      "Bash(nix search:*)"
+      "Bash(nix search:*)",
+      "WebFetch(domain:wiki.nixos.org)",
+      "WebFetch(domain:wiki.hypr.land)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:mynixos.com)",
+      "WebFetch(domain:search.nixos.org)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:developer.nvidia.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:code.hyprland.org)"
     ]
   }
 }

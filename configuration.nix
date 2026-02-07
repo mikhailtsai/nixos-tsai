@@ -20,15 +20,28 @@
   # Графика
   hardware.graphics.enable = true;
 
-  # NVIDIA (раскомментируй если есть NVIDIA GPU)
-  # hardware.nvidia = {
-  #   modesetting.enable = true;
-  #   powerManagement.enable = false;
-  #   open = false;
-  #   nvidiaSettings = true;
-  #   package = config.boot.kernelPackages.nvidiaPackages.stable;
-  # };
-  # services.xserver.videoDrivers = [ "nvidia" ];
+  # NVIDIA GPU (RTX 4080 — Ada Lovelace)
+  hardware.nvidia = {
+    modesetting.enable = true;
+    powerManagement.enable = true;
+    powerManagement.finegrained = false;  # экспериментальная, не включаем по умолчанию
+    open = true;                          # рекомендуется для Ada Lovelace (RTX 40)
+    nvidiaSettings = true;
+    package = config.boot.kernelPackages.nvidiaPackages.stable;
+    prime = {
+      offload = {
+        enable = true;
+        enableOffloadCmd = true;
+      };
+      intelBusId = "PCI:0:2:0";   # TODO: проверить через lspci
+      nvidiaBusId = "PCI:1:0:0";  # TODO: проверить через lspci
+    };
+  };
+  services.xserver.videoDrivers = [ "nvidia" ];
+
+  # Intel CPU
+  hardware.cpu.intel.updateMicrocode = true;
+  services.thermald.enable = true;
 
   # Загрузчик - systemd-boot для UEFI
   boot.loader.systemd-boot.enable = true;
@@ -230,6 +243,14 @@
     gparted
     baobab          # анализ места на диске
     gnome-system-monitor
+
+    # -------------------------------------------------------------------------
+    # Мониторинг оборудования
+    # -------------------------------------------------------------------------
+    nvtopPackages.full    # мониторинг GPU
+    lm_sensors            # температурные датчики
+    powertop              # анализ энергопотребления
+    acpi                  # информация о батарее
   ];
 
   # ===========================================================================
@@ -256,6 +277,16 @@
     pulse.enable = true;
     jack.enable = true;
   };
+
+  # ===========================================================================
+  # REALTIME AUDIO (для Focusrite/DAW)
+  # ===========================================================================
+  security.rtkit.enable = true;
+  security.pam.loginLimits = [
+    { domain = "@audio"; item = "memlock"; type = "-"; value = "unlimited"; }
+    { domain = "@audio"; item = "rtprio";  type = "-"; value = "99"; }
+    { domain = "@audio"; item = "nice";    type = "-"; value = "-19"; }
+  ];
 
   # ===========================================================================
   # HYPRLAND
@@ -319,6 +350,15 @@
     powerOnBoot = true;
   };
   services.blueman.enable = true;
+
+  # ===========================================================================
+  # УПРАВЛЕНИЕ ПИТАНИЕМ
+  # ===========================================================================
+  services.logind = {
+    lidSwitch = "suspend";
+    lidSwitchExternalPower = "ignore";
+    lidSwitchDocked = "ignore";
+  };
 
   # ===========================================================================
   # FLATPAK (для Battle.net и других)

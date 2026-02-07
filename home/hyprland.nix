@@ -6,13 +6,24 @@
     # ==========================================================================
     # МОНИТОР
     # ==========================================================================
-    monitor = ,preferred,auto,1
+    # Внешний монитор (имя уточнить через hyprctl monitors)
+    monitor = DP-1, 3440x1440@100, 0x0, 1
+    # Встроенный дисплей ноутбука
+    monitor = eDP-1, preferred, auto, 1
+    # Fallback
+    monitor = , preferred, auto, 1
 
     # ==========================================================================
     # ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
     # ==========================================================================
     env = XCURSOR_SIZE,24
     env = QT_QPA_PLATFORMTHEME,qt5ct
+    env = LIBVA_DRIVER_NAME,nvidia
+    env = XDG_SESSION_TYPE,wayland
+    env = GBM_BACKEND,nvidia-drm
+    env = __GLX_VENDOR_LIBRARY_NAME,nvidia
+    env = NVD_BACKEND,direct
+    env = ELECTRON_OZONE_PLATFORM_HINT,auto
 
     # ==========================================================================
     # АВТОЗАПУСК
@@ -103,6 +114,10 @@
     misc {
       force_default_wallpaper = 0
       disable_hyprland_logo = true
+    }
+
+    cursor {
+      no_hardware_cursors = true
     }
 
     # ==========================================================================
