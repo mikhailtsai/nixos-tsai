@@ -27,12 +27,9 @@
     nvidiaSettings = true;
     package = config.boot.kernelPackages.nvidiaPackages.stable;
     prime = {
-      offload = {
-        enable = true;
-        enableOffloadCmd = true;
-      };
-      intelBusId = "PCI:0:2:0";   # TODO: проверить через lspci
-      nvidiaBusId = "PCI:1:0:0";  # TODO: проверить через lspci
+      sync.enable = true;  # NVIDIA as primary, works with HDMI at boot
+      intelBusId = "PCI:0:2:0";
+      nvidiaBusId = "PCI:1:0:0";
     };
   };
   services.xserver.videoDrivers = [ "nvidia" ];
@@ -47,7 +44,11 @@
 
   # Ранняя загрузка NVIDIA DRM для работы внешнего монитора при загрузке
   boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ];
-  boot.kernelParams = [ "nvidia-drm.modeset=1" "nvidia-drm.fbdev=1" ];
+  boot.kernelParams = [
+    "nvidia-drm.modeset=1"
+    "nvidia-drm.fbdev=1"
+    "fbcon=map:1"          # prefer NVIDIA framebuffer for console
+  ];
 
   # Сеть
   networking.hostName = "nixos";
@@ -379,10 +380,10 @@
   # ===========================================================================
   # УПРАВЛЕНИЕ ПИТАНИЕМ
   # ===========================================================================
-  services.logind = {
-    lidSwitch = "ignore";
-    lidSwitchExternalPower = "ignore";
-    lidSwitchDocked = "ignore";
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
   };
 
   # ===========================================================================

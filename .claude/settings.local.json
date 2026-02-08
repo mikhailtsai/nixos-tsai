@@ -2,8 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(dir:*)",
-      "WebSearch",
+      "Bash(sudo nixos-rebuild *)",
+      "Bash(nix flake update *)",
       "Bash(nix search:*)",
+      "WebSearch",
       "WebFetch(domain:wiki.nixos.org)",
       "WebFetch(domain:wiki.hypr.land)",
       "WebFetch(domain:github.com)",
