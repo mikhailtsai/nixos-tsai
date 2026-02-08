@@ -17,6 +17,10 @@
     CHROME_EXECUTABLE = "${pkgs.chromium}/bin/chromium";
   };
 
+  home.sessionPath = [
+    "$HOME/.local/bin"
+  ];
+
   # Позволяем Home Manager управлять собой
   programs.home-manager.enable = true;
 
@@ -71,10 +75,6 @@
       gp = "git push";
       gl = "git pull";
     };
-    initExtra = ''
-      # fnm — переключение версий Node.js
-      eval "$(fnm env --use-on-cd)"
-    '';
   };
 
   # ===========================================================================
@@ -111,81 +111,97 @@
   # ДОПОЛНИТЕЛЬНЫЕ ПАКЕТЫ ПОЛЬЗОВАТЕЛЯ
   # ===========================================================================
   home.packages = with pkgs; [
-    # Node.js — управление версиями (fnm install --lts)
-    fnm
+    # Node.js
+    nodejs
 
     # Шпаргалка по хоткеям (Super+/)
     (writeShellScriptBin "keybinds" ''
-        printf "\033[36m\033[1m  ─── ПРИЛОЖЕНИЯ ───\033[0m\n"
-        printf "  \033[33mSuper+Enter\033[0m        Терминал\n"
-        printf "  \033[33mSuper+D\033[0m            Rofi (приложения)\n"
-        printf "  \033[33mSuper+R\033[0m            Запуск команды\n"
-        printf "  \033[33mSuper+E\033[0m            Файлы\n"
-        printf "  \033[33mSuper+B\033[0m            Firefox\n"
-        printf "  \033[33mSuper+L\033[0m            Блокировка\n"
-        printf "  \033[33mSuper+M\033[0m            Меню выхода\n"
-        printf "  \033[33mSuper+Shift+M\033[0m      Выход из Hyprland\n"
+        paste <(
+        printf "\033[36m\033[1m─── ПРИЛОЖЕНИЯ ───\033[0m\n"
+        printf "\033[33mSuper+Enter\033[0m      Терминал\n"
+        printf "\033[33mSuper+D\033[0m          Rofi\n"
+        printf "\033[33mSuper+R\033[0m          Запуск команды\n"
+        printf "\033[33mSuper+E\033[0m          Файлы\n"
+        printf "\033[33mSuper+B\033[0m          Firefox\n"
+        printf "\033[33mSuper+L\033[0m          Блокировка\n"
+        printf "\033[33mSuper+M\033[0m          Меню выхода\n"
+        printf "\033[33mSuper+Shift+M\033[0m    Выход\n"
         printf "\n"
-        printf "\033[36m\033[1m  ─── ОКНА ───\033[0m\n"
-        printf "  \033[33mSuper+Q\033[0m            Закрыть окно\n"
-        printf "  \033[33mSuper+V\033[0m            Плавающее\n"
-        printf "  \033[33mSuper+F\033[0m            Полный экран\n"
-        printf "  \033[33mSuper+Shift+F\033[0m      Максимизация\n"
-        printf "  \033[33mSuper+T\033[0m            Поверх всех\n"
-        printf "  \033[33mSuper+C\033[0m            Центрировать\n"
-        printf "  \033[33mSuper+P\033[0m            Pseudo-tile\n"
-        printf "  \033[33mSuper+J\033[0m            Переключить split\n"
-        printf "  \033[33mSuper+G\033[0m            Группа окон\n"
-        printf "  \033[33mSuper+Tab\033[0m          След. в группе\n"
-        printf "  \033[33mSuper+Shift+Tab\033[0m    Пред. в группе\n"
+        printf "\033[36m\033[1m─── ОКНА ───\033[0m\n"
+        printf "\033[33mSuper+Q\033[0m          Закрыть\n"
+        printf "\033[33mSuper+V\033[0m          Плавающее\n"
+        printf "\033[33mSuper+F\033[0m          Полный экран\n"
+        printf "\033[33mSuper+Shift+F\033[0m    Максимизация\n"
+        printf "\033[33mSuper+T\033[0m          Поверх всех\n"
+        printf "\033[33mSuper+C\033[0m          Центрировать\n"
+        printf "\033[33mSuper+P\033[0m          Pseudo-tile\n"
+        printf "\033[33mSuper+J\033[0m          Переключить split\n"
+        printf "\033[33mSuper+G\033[0m          Группа окон\n"
+        printf "\033[33mSuper+Tab\033[0m        След. в группе\n"
         printf "\n"
-        printf "\033[36m\033[1m  ─── ФОКУС ───\033[0m\n"
-        printf "  \033[33mSuper+←↑↓→\033[0m        Фокус\n"
-        printf "  \033[33mSuper+H/K\033[0m          Фокус влево/вверх\n"
-        printf "  \033[33mAlt+J\033[0m              Фокус вниз\n"
-        printf "  \033[33mAlt+Tab\033[0m            Циклический фокус\n"
+        printf "\033[36m\033[1m─── ФОКУС ───\033[0m\n"
+        printf "\033[33mSuper+←↑↓→\033[0m      Фокус\n"
+        printf "\033[33mSuper+H/K\033[0m        Влево/вверх\n"
+        printf "\033[33mAlt+J\033[0m            Вниз\n"
+        printf "\033[33mAlt+Tab\033[0m          Циклический\n"
+        ) <(
+        printf "\033[36m\033[1m─── РАБОЧИЕ СТОЛЫ ───\033[0m\n"
+        printf "\033[33mSuper+1-0\033[0m        Переключить\n"
+        printf "\033[33mSuper+Shift+1-0\033[0m  Переместить окно\n"
+        printf "\033[33mSuper+[ ]\033[0m        Пред./след.\n"
+        printf "\033[33mCtrl+Alt+←→\033[0m     Пред./след.\n"
+        printf "\033[33mSuper+Колесо\033[0m     Прокрутка\n"
+        printf "\033[33mSuper+S\033[0m          Scratchpad\n"
+        printf "\033[33mSuper+Shift+S\033[0m    В scratchpad\n"
         printf "\n"
-        printf "\033[36m\033[1m  ─── ПЕРЕМЕЩЕНИЕ ОКОН ───\033[0m\n"
-        printf "  \033[33mSuper+Shift+←↑↓→\033[0m  Переместить\n"
-        printf "  \033[33mSuper+Shift+HJKL\033[0m   Переместить (vim)\n"
-        printf "  \033[33mSuper+Ctrl+←↑↓→\033[0m   Размер окна\n"
-        printf "  \033[33mSuper+Ctrl+HJKL\033[0m    Размер (vim)\n"
-        printf "  \033[33mSuper+Ctrl+Shift+←↑↓→\033[0m Swap\n"
+        printf "\033[36m\033[1m─── ПЕРЕМЕЩЕНИЕ ───\033[0m\n"
+        printf "\033[33mSuper+Shift+←↑↓→\033[0m Переместить\n"
+        printf "\033[33mSuper+Ctrl+←↑↓→\033[0m Размер\n"
         printf "\n"
-        printf "\033[36m\033[1m  ─── РАБОЧИЕ СТОЛЫ ───\033[0m\n"
-        printf "  \033[33mSuper+1-0\033[0m          Переключить 1-10\n"
-        printf "  \033[33mSuper+Shift+1-0\033[0m    Переместить окно\n"
-        printf "  \033[33mSuper+Alt+1-5\033[0m      Переместить тихо\n"
-        printf "  \033[33mSuper+[ ]\033[0m          Пред./след.\n"
-        printf "  \033[33mCtrl+Alt+←→\033[0m       Пред./след.\n"
-        printf "  \033[33mSuper+Колесо\033[0m       Прокрутка столов\n"
-        printf "  \033[33mSuper+S\033[0m            Scratchpad\n"
-        printf "  \033[33mSuper+Shift+S\033[0m      В scratchpad\n"
+        printf "\033[36m\033[1m─── СКРИНШОТЫ ───\033[0m\n"
+        printf "\033[33mPrint\033[0m            Область → буфер\n"
+        printf "\033[33mShift+Print\033[0m      Экран → буфер\n"
+        printf "\033[33mSuper+Print\033[0m      Область → Swappy\n"
+        printf "\033[33mAlt+Print\033[0m        Окно → буфер\n"
         printf "\n"
-        printf "\033[36m\033[1m  ─── СКРИНШОТЫ ───\033[0m\n"
-        printf "  \033[33mPrint\033[0m              Область → буфер\n"
-        printf "  \033[33mShift+Print\033[0m        Экран → буфер\n"
-        printf "  \033[33mSuper+Print\033[0m        Область → Swappy\n"
-        printf "  \033[33mSuper+Shift+Print\033[0m  Экран → Swappy\n"
-        printf "  \033[33mAlt+Print\033[0m          Окно → буфер\n"
+        printf "\033[36m\033[1m─── УТИЛИТЫ ───\033[0m\n"
+        printf "\033[33mSuper+X\033[0m          История буфера\n"
+        printf "\033[33mSuper+Shift+C\033[0m    Пипетка цвета\n"
+        printf "\033[33mSuper+\\\\\033[0m          Пароли (rbw)\n"
+        printf "\033[33mSuper+/\033[0m          Эта шпаргалка\n"
+        printf "\033[33mAlt+Shift\033[0m        Раскладка US/RU\n"
         printf "\n"
-        printf "\033[36m\033[1m  ─── УТИЛИТЫ ───\033[0m\n"
-        printf "  \033[33mSuper+X\033[0m            История буфера\n"
-        printf "  \033[33mSuper+Shift+C\033[0m      Пипетка цвета\n"
-        printf "  \033[33mSuper+/\033[0m            Эта шпаргалка\n"
-        printf "  \033[33mAlt+Shift\033[0m          Раскладка US/RU\n"
-        printf "\n"
-        printf "\033[36m\033[1m  ─── МЫШЬ ───\033[0m\n"
-        printf "  \033[33mSuper+ЛКМ\033[0m          Перетаскивать\n"
-        printf "  \033[33mSuper+ПКМ\033[0m          Изменить размер\n"
-        printf "\n"
-        printf "\033[36m\033[1m  ─── МЕДИА ───\033[0m\n"
-        printf "  \033[33mFn+громкость\033[0m       Громкость\n"
-        printf "  \033[33mFn+яркость\033[0m         Яркость\n"
-        printf "\n"
-        printf "\033[90mНажми любую клавишу...\033[0m"
+        printf "\033[36m\033[1m─── МЫШЬ / МЕДИА ───\033[0m\n"
+        printf "\033[33mSuper+ЛКМ\033[0m        Перетаскивать\n"
+        printf "\033[33mSuper+ПКМ\033[0m        Размер\n"
+        printf "\033[33mFn+клавиши\033[0m       Громкость/яркость\n"
+        )
+        printf "\n\033[90mНажми любую клавишу...\033[0m"
         read -n 1 -s -r
       '')
+
+    # VPN скрипт
+    (writeShellScriptBin "vpn" ''
+      case "$1" in
+        up|connect|"")
+          sudo openvpn --config ~/mikhail.tsai.ovpn
+          ;;
+        down|disconnect)
+          sudo pkill -SIGTERM openvpn
+          ;;
+        status)
+          if ip addr show tun0 &>/dev/null; then
+            echo "VPN: Connected"
+            ip addr show tun0 | grep inet
+          else
+            echo "VPN: Disconnected"
+          fi
+          ;;
+        *)
+          echo "Usage: vpn [up|down|status]"
+          ;;
+      esac
+    '')
 
     # CLI утилиты
     eza           # современный ls

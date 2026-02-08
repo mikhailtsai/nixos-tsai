@@ -6,10 +6,10 @@
     # ==========================================================================
     # МОНИТОР
     # ==========================================================================
-    # Внешний монитор (имя уточнить через hyprctl monitors)
+    # Внешний монитор (основной)
     monitor = HDMI-A-1, 3440x1440@100, 0x0, 1.25
-    # Встроенный дисплей ноутбука
-    monitor = eDP-1, preferred, auto, 1.25
+    # Встроенный дисплей ноутбука (под основным, будет отключен если HDMI есть)
+    monitor = eDP-2, preferred, auto-down, 1.25
     # Fallback
     monitor = , preferred, auto, 1
 
@@ -35,8 +35,8 @@
     # ==========================================================================
     # АВТОЗАПУСК
     # ==========================================================================
-    # Проверка состояния крышки при старте и при reload конфига
-    exec = grep -q closed /proc/acpi/button/lid/LID0/state && hyprctl keyword monitor eDP-1,disable
+    # Управление мониторами: если HDMI есть - отключить eDP-2, иначе включить
+    exec = hyprctl monitors -j | grep -q HDMI-A-1 && hyprctl keyword monitor eDP-2,disable || hyprctl keyword monitor "eDP-2,preferred,0x0,1.25"
     exec-once = waybar
     exec-once = nm-applet --indicator
     exec-once = hyprpaper
@@ -152,6 +152,9 @@
 
     # Пипетка цветов
     bind = $mod SHIFT, C, exec, hyprpicker -a
+
+    # Менеджер паролей (rofi-rbw)
+    bind = $mod, backslash, exec, rofi-rbw
 
     # Шпаргалка хоткеев
     bind = $mod, slash, exec, kitty --class cheatsheet -e keybinds
@@ -308,8 +311,8 @@
     bindel = , XF86MonBrightnessUp, exec, swayosd-client --brightness raise
     bindel = , XF86MonBrightnessDown, exec, swayosd-client --brightness lower
     
-    bindl = , switch:on:Lid Switch, exec, hyprctl keyword monitor "eDP-1,disable"
-    bindl = , switch:off:Lid Switch, exec, hyprctl keyword monitor "eDP-1,preferred,auto,1"
+    bindl = , switch:on:Lid Switch, exec, hyprctl keyword monitor "eDP-2,disable"
+    bindl = , switch:off:Lid Switch, exec, hyprctl keyword monitor "eDP-2,preferred,0x0,1.25"
 
     # ==========================================================================
     # CAPS LOCK OSD
@@ -334,7 +337,7 @@
     windowrule = float on, match:title Picture-in-Picture
     windowrule = float on, match:class xdg-desktop-portal-gtk
     windowrule = float on, match:class cheatsheet
-    windowrule = size 520 820, match:class cheatsheet
+    windowrule = size 920 520, match:class cheatsheet
 
     # Размеры для плавающих
     windowrule = size 800 600, match:class pavucontrol
@@ -449,8 +452,8 @@
 
   # Hyprpaper - обои
   xdg.configFile."hypr/hyprpaper.conf".text = ''
-    preload = /home/leet/.config/hypr/wallpaper.png
-    wallpaper = ,/home/leet/.config/hypr/wallpaper.png
+    preload = /home/leet/.config/hypr/wallpaper.jpg
+    wallpaper = ,/home/leet/.config/hypr/wallpaper.jpg
     splash = false
   '';
 }

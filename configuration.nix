@@ -12,10 +12,8 @@
   # Разрешаем unfree пакеты
   nixpkgs.config.allowUnfree = true;
 
-  # SSH
+  # SSH агент (для исходящих подключений, например к GitHub)
   programs.ssh.startAgent = true;
-  services.openssh.enable = true;
-  networking.firewall.allowedTCPPorts = [ 22 ];
 
   # Графика
   hardware.graphics.enable = true;
@@ -47,9 +45,23 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # Ранняя загрузка NVIDIA DRM для работы внешнего монитора при загрузке
+  boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ];
+  boot.kernelParams = [ "nvidia-drm.modeset=1" "nvidia-drm.fbdev=1" ];
+
   # Сеть
   networking.hostName = "nixos";
-  networking.networkmanager.enable = true;
+  networking.networkmanager = {
+    enable = true;
+    plugins = [ pkgs.networkmanager-openvpn ];
+  };
+  services.resolved.enable = true;
+
+  # Симлинк для update-systemd-resolved (стабильный путь для OpenVPN)
+  environment.etc."openvpn/update-systemd-resolved" = {
+    source = "${pkgs.openvpn}/libexec/update-systemd-resolved";
+    mode = "0755";
+  };
 
   # Время и локализация
   time.timeZone = "America/Montevideo";
@@ -125,9 +137,11 @@
     wlr-randr       # настройка мониторов
 
     # -------------------------------------------------------------------------
-    # Network
+    # Network / VPN
     # -------------------------------------------------------------------------
     networkmanagerapplet
+    openvpn
+    update-systemd-resolved
 
     # -------------------------------------------------------------------------
     # Яркость
@@ -227,6 +241,10 @@
     # Пароли
     # -------------------------------------------------------------------------
     bitwarden-desktop
+    rbw              # CLI клиент Bitwarden
+    rofi-rbw         # Rofi интеграция для rbw
+    wtype            # Для автоввода паролей в Wayland
+    pinentry-gnome3  # Для ввода мастер-пароля
 
     # -------------------------------------------------------------------------
     # Криптовалюты
@@ -293,17 +311,22 @@
   # ===========================================================================
   # HYPRLAND
   # ===========================================================================
-  programs.hyprland.enable = true;
+  programs.hyprland = {
+    enable = true;
+    withUWSM = true;  # Запуск через uwsm (рекомендуется)
+  };
 
   # ===========================================================================
-  # DISPLAY MANAGER — greetd
+  # DISPLAY MANAGER — greetd + regreet (Wayland GTK greeter)
   # ===========================================================================
-  services.greetd = {
+  programs.regreet = {
     enable = true;
     settings = {
-      default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd Hyprland";
-        user = "greeter";
+      background = {
+        fit = "Cover";
+      };
+      GTK = {
+        application_prefer_dark_theme = true;
       };
     };
   };
