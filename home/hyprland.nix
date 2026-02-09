@@ -45,9 +45,12 @@
     # Disable laptop monitor if external monitor is connected (exec, not exec-once, to run on reload too)
     exec = sleep 0.5 && hyprctl monitors | grep -q "HDMI-A-1\|DP-1\|DP-2\|DP-3" && hyprctl keyword monitor "eDP-1,disable" && hyprctl keyword monitor "eDP-2,disable"
 
+    # GNOME Keyring для хранения паролей
+    exec-once = gnome-keyring-daemon --start --components=secrets
+
     exec-once = waybar
     exec-once = nm-applet --indicator
-    exec-once = awww-daemon && sleep 0.5 && awww img /etc/nixos/wallpapers
+    exec-once = awww-daemon && sleep 0.5 && find /etc/nixos/wallpapers -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" -o -name "*.webp" \) | shuf -n 1 | xargs awww img --transition-type grow --transition-pos center
     exec-once = hypridle
     exec-once = mako
     exec-once = wl-paste --type text --watch cliphist store
@@ -61,6 +64,7 @@
     input {
       kb_layout = us,ru
       kb_options = grp:alt_shift_toggle
+      numlock_by_default = true
       follow_mouse = 1
       touchpad {
         natural_scroll = true
@@ -145,14 +149,14 @@
     # Приложения
     bind = $mod, RETURN, exec, kitty
     bind = $mod, Q, killactive,
-    bind = $mod, E, exec, nautilus
+    bind = $mod, E, exec, thunar
     bind = $mod, D, exec, rofi -show drun -show-icons
     bind = $mod, R, exec, rofi -show run
     bind = $mod, L, exec, hyprlock
     bind = $mod, B, exec, firefox
 
     # Меню выхода / выключения
-    bind = $mod, M, exec, wlogout
+    bind = $mod, M, exec, power-menu
     bind = $mod SHIFT, M, exit,
 
     # История буфера обмена
@@ -166,6 +170,9 @@
 
     # Шпаргалка хоткеев
     bind = $mod, slash, exec, kitty --class cheatsheet -e keybinds
+
+    # Смена обоев
+    bind = $mod, W, exec, find /etc/nixos/wallpapers -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" -o -name "*.webp" \) | shuf -n 1 | xargs awww img --transition-type grow --transition-pos center
 
     # Состояние окна
     bind = $mod, V, togglefloating,
@@ -248,6 +255,30 @@
     bind = $mod, 9, workspace, 9
     bind = $mod, 0, workspace, 10
 
+    # Numpad для рабочих столов (NumLock выключен)
+    bind = $mod, KP_End, workspace, 1
+    bind = $mod, KP_Down, workspace, 2
+    bind = $mod, KP_Next, workspace, 3
+    bind = $mod, KP_Left, workspace, 4
+    bind = $mod, KP_Begin, workspace, 5
+    bind = $mod, KP_Right, workspace, 6
+    bind = $mod, KP_Home, workspace, 7
+    bind = $mod, KP_Up, workspace, 8
+    bind = $mod, KP_Prior, workspace, 9
+    bind = $mod, KP_Insert, workspace, 10
+
+    # Numpad для рабочих столов (NumLock включен)
+    bind = $mod, KP_1, workspace, 1
+    bind = $mod, KP_2, workspace, 2
+    bind = $mod, KP_3, workspace, 3
+    bind = $mod, KP_4, workspace, 4
+    bind = $mod, KP_5, workspace, 5
+    bind = $mod, KP_6, workspace, 6
+    bind = $mod, KP_7, workspace, 7
+    bind = $mod, KP_8, workspace, 8
+    bind = $mod, KP_9, workspace, 9
+    bind = $mod, KP_0, workspace, 10
+
     # Навигация колесом мыши
     bind = $mod, mouse_down, workspace, e+1
     bind = $mod, mouse_up, workspace, e-1
@@ -271,6 +302,18 @@
     bind = $mod SHIFT, 8, movetoworkspace, 8
     bind = $mod SHIFT, 9, movetoworkspace, 9
     bind = $mod SHIFT, 0, movetoworkspace, 10
+
+    # Перемещение окон через Numpad (NumLock включен)
+    bind = $mod SHIFT, KP_1, movetoworkspace, 1
+    bind = $mod SHIFT, KP_2, movetoworkspace, 2
+    bind = $mod SHIFT, KP_3, movetoworkspace, 3
+    bind = $mod SHIFT, KP_4, movetoworkspace, 4
+    bind = $mod SHIFT, KP_5, movetoworkspace, 5
+    bind = $mod SHIFT, KP_6, movetoworkspace, 6
+    bind = $mod SHIFT, KP_7, movetoworkspace, 7
+    bind = $mod SHIFT, KP_8, movetoworkspace, 8
+    bind = $mod SHIFT, KP_9, movetoworkspace, 9
+    bind = $mod SHIFT, KP_0, movetoworkspace, 10
 
     # Переместить и следовать
     bind = $mod ALT, 1, movetoworkspacesilent, 1
@@ -346,7 +389,7 @@
     windowrule = float on, match:title Picture-in-Picture
     windowrule = float on, match:class xdg-desktop-portal-gtk
     windowrule = float on, match:class cheatsheet
-    windowrule = size 920 520, match:class cheatsheet
+    windowrule = size 1000 480, match:class cheatsheet
 
     # Размеры для плавающих
     windowrule = size 800 600, match:class pavucontrol
@@ -373,6 +416,10 @@
     # Steam
     windowrule = float on, match:class steam, match:title Friends List
     windowrule = float on, match:class steam, match:title Steam Settings
+
+    # Battle.net и Hearthstone - сделать обычными окнами
+    windowrule = tile on, match:title Battle.net
+    windowrule = tile on, match:title Hearthstone
 
     # Игры на полный экран
     windowrule = fullscreen on, match:class ^(steam_app_.*)$
@@ -454,6 +501,18 @@
       font_size = 64
       font_family = FiraCode Nerd Font
       position = 0, 80
+      halign = center
+      valign = center
+    }
+
+    # Раскладка клавиатуры
+    label {
+      monitor =
+      text = $LAYOUT
+      font_size = 16
+      font_family = FiraCode Nerd Font
+      color = rgb(200, 200, 200)
+      position = 0, -80
       halign = center
       valign = center
     }

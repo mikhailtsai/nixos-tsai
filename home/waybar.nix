@@ -8,7 +8,7 @@
     height = 30;
     modules-left = [ "hyprland/workspaces" "hyprland/window" ];
     modules-center = [ "clock" ];
-    modules-right = [ "pulseaudio" "network" "battery" "tray" ];
+    modules-right = [ "hyprland/language" "pulseaudio" "network" "battery" "tray" "custom/power" ];
 
     "hyprland/workspaces" = {
       format = "{icon}";
@@ -45,8 +45,20 @@
       on-click = "pavucontrol";
     };
 
+    "hyprland/language" = {
+      format = "{}";
+      "format-English (US)" = "EN";
+      "format-Russian" = "RU";
+    };
+
     tray = {
       spacing = 10;
+    };
+
+    "custom/power" = {
+      format = "⏻";
+      tooltip = "Меню выхода";
+      on-click = "power-menu";
     };
   };
 
@@ -74,8 +86,21 @@
       color: #33ccff;
     }
 
-    #clock, #battery, #network, #pulseaudio, #tray {
+    #clock, #battery, #network, #pulseaudio, #tray, #custom-power, #language {
       padding: 0 10px;
+    }
+
+    #language {
+      color: #33ccff;
+      font-weight: bold;
+    }
+
+    #custom-power {
+      color: #ff6666;
+    }
+
+    #custom-power:hover {
+      color: #ff3333;
     }
 
     #battery.warning {

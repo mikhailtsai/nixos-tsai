@@ -15,6 +15,8 @@
   # ===========================================================================
   home.sessionVariables = {
     CHROME_EXECUTABLE = "${pkgs.chromium}/bin/chromium";
+    # Масштаб GTK меню (для REAPER и др.)
+    GDK_DPI_SCALE = "1.25";
   };
 
   home.sessionPath = [
@@ -116,69 +118,40 @@
 
     # Шпаргалка по хоткеям (Super+/)
     (writeShellScriptBin "keybinds" ''
-        paste <(
-        printf "\033[36m\033[1m─── ПРИЛОЖЕНИЯ ───\033[0m\n"
-        printf "\033[33mSuper+Enter\033[0m      Терминал\n"
-        printf "\033[33mSuper+D\033[0m          Rofi\n"
-        printf "\033[33mSuper+R\033[0m          Запуск команды\n"
-        printf "\033[33mSuper+E\033[0m          Файлы\n"
-        printf "\033[33mSuper+B\033[0m          Firefox\n"
-        printf "\033[33mSuper+L\033[0m          Блокировка\n"
-        printf "\033[33mSuper+M\033[0m          Меню выхода\n"
-        printf "\033[33mSuper+Shift+M\033[0m    Выход\n"
-        printf "\n"
-        printf "\033[36m\033[1m─── ОКНА ───\033[0m\n"
-        printf "\033[33mSuper+Q\033[0m          Закрыть\n"
-        printf "\033[33mSuper+V\033[0m          Плавающее\n"
-        printf "\033[33mSuper+F\033[0m          Полный экран\n"
-        printf "\033[33mSuper+Shift+F\033[0m    Максимизация\n"
-        printf "\033[33mSuper+T\033[0m          Поверх всех\n"
-        printf "\033[33mSuper+C\033[0m          Центрировать\n"
-        printf "\033[33mSuper+P\033[0m          Pseudo-tile\n"
-        printf "\033[33mSuper+J\033[0m          Переключить split\n"
-        printf "\033[33mSuper+G\033[0m          Группа окон\n"
-        printf "\033[33mSuper+Tab\033[0m        След. в группе\n"
-        printf "\n"
-        printf "\033[36m\033[1m─── ФОКУС ───\033[0m\n"
-        printf "\033[33mSuper+←↑↓→\033[0m      Фокус\n"
-        printf "\033[33mSuper+H/K\033[0m        Влево/вверх\n"
-        printf "\033[33mAlt+J\033[0m            Вниз\n"
-        printf "\033[33mAlt+Tab\033[0m          Циклический\n"
-        ) <(
-        printf "\033[36m\033[1m─── РАБОЧИЕ СТОЛЫ ───\033[0m\n"
-        printf "\033[33mSuper+1-0\033[0m        Переключить\n"
-        printf "\033[33mSuper+Shift+1-0\033[0m  Переместить окно\n"
-        printf "\033[33mSuper+[ ]\033[0m        Пред./след.\n"
-        printf "\033[33mCtrl+Alt+←→\033[0m     Пред./след.\n"
-        printf "\033[33mSuper+Колесо\033[0m     Прокрутка\n"
-        printf "\033[33mSuper+S\033[0m          Scratchpad\n"
-        printf "\033[33mSuper+Shift+S\033[0m    В scratchpad\n"
-        printf "\n"
-        printf "\033[36m\033[1m─── ПЕРЕМЕЩЕНИЕ ───\033[0m\n"
-        printf "\033[33mSuper+Shift+←↑↓→\033[0m Переместить\n"
-        printf "\033[33mSuper+Ctrl+←↑↓→\033[0m Размер\n"
-        printf "\n"
-        printf "\033[36m\033[1m─── СКРИНШОТЫ ───\033[0m\n"
-        printf "\033[33mPrint\033[0m            Область → буфер\n"
-        printf "\033[33mShift+Print\033[0m      Экран → буфер\n"
-        printf "\033[33mSuper+Print\033[0m      Область → Swappy\n"
-        printf "\033[33mAlt+Print\033[0m        Окно → буфер\n"
-        printf "\n"
-        printf "\033[36m\033[1m─── УТИЛИТЫ ───\033[0m\n"
-        printf "\033[33mSuper+X\033[0m          История буфера\n"
-        printf "\033[33mSuper+Shift+C\033[0m    Пипетка цвета\n"
-        printf "\033[33mSuper+\\\\\033[0m          Пароли (rbw)\n"
-        printf "\033[33mSuper+/\033[0m          Эта шпаргалка\n"
-        printf "\033[33mAlt+Shift\033[0m        Раскладка US/RU\n"
-        printf "\n"
-        printf "\033[36m\033[1m─── МЫШЬ / МЕДИА ───\033[0m\n"
-        printf "\033[33mSuper+ЛКМ\033[0m        Перетаскивать\n"
-        printf "\033[33mSuper+ПКМ\033[0m        Размер\n"
-        printf "\033[33mFn+клавиши\033[0m       Громкость/яркость\n"
-        )
-        printf "\n\033[90mНажми любую клавишу...\033[0m"
-        read -n 1 -s -r
-      '')
+      clear
+      echo ""
+      echo -e "\033[1;36m╔══════════════════════════════════════════════════════════════════════════════╗\033[0m"
+      echo -e "\033[1;36m║                           ГОРЯЧИЕ КЛАВИШИ HYPRLAND                           ║\033[0m"
+      echo -e "\033[1;36m╚══════════════════════════════════════════════════════════════════════════════╝\033[0m"
+      echo ""
+      echo -e "\033[1;33m ПРИЛОЖЕНИЯ                            ОКНА\033[0m"
+      echo -e " \033[33mSuper+Enter\033[0m      Терминал            \033[33mSuper+Q\033[0m           Закрыть"
+      echo -e " \033[33mSuper+D\033[0m          Rofi                \033[33mSuper+V\033[0m           Плавающее"
+      echo -e " \033[33mSuper+E\033[0m          Файлы               \033[33mSuper+F\033[0m           Полный экран"
+      echo -e " \033[33mSuper+B\033[0m          Firefox             \033[33mSuper+T\033[0m           Поверх всех"
+      echo -e " \033[33mSuper+L\033[0m          Блокировка          \033[33mSuper+C\033[0m           Центрировать"
+      echo -e " \033[33mSuper+M\033[0m          Меню выхода         \033[33mSuper+G\033[0m           Группа окон"
+      echo ""
+      echo -e "\033[1;33m РАБОЧИЕ СТОЛЫ                         НАВИГАЦИЯ\033[0m"
+      echo -e " \033[33mSuper+1-0\033[0m        Переключить         \033[33mSuper+Стрелки\033[0m     Фокус"
+      echo -e " \033[33mSuper+Shift+1-0\033[0m  Переместить окно    \033[33mSuper+Shift+Стрелки\033[0m Переместить"
+      echo -e " \033[33mSuper+S\033[0m          Scratchpad          \033[33mSuper+Ctrl+Стрелки\033[0m  Размер"
+      echo -e " \033[33mSuper+[ ]\033[0m        Пред./след.         \033[33mAlt+Tab\033[0m           Циклический"
+      echo ""
+      echo -e "\033[1;33m СКРИНШОТЫ                             УТИЛИТЫ\033[0m"
+      echo -e " \033[33mPrint\033[0m            Область -> буфер    \033[33mSuper+X\033[0m           Буфер обмена"
+      echo -e " \033[33mShift+Print\033[0m      Экран -> буфер      \033[33mSuper+Shift+C\033[0m     Пипетка цвета"
+      echo -e " \033[33mSuper+Print\033[0m      Область -> Swappy   \033[33mSuper+\\\\\033[0m          Пароли (rbw)"
+      echo -e " \033[33mAlt+Print\033[0m        Окно -> буфер       \033[33mSuper+W\033[0m           Сменить обои"
+      echo ""
+      echo -e "\033[1;33m МЫШЬ                                  ПРОЧЕЕ\033[0m"
+      echo -e " \033[33mSuper+ЛКМ\033[0m        Перетаскивать       \033[33mAlt+Shift\033[0m         Раскладка US/RU"
+      echo -e " \033[33mSuper+ПКМ\033[0m        Изменить размер     \033[33mSuper+/\033[0m           Эта шпаргалка"
+      echo -e " \033[33mSuper+Колесо\033[0m     Рабочие столы       \033[33mFn+клавиши\033[0m        Громкость/яркость"
+      echo ""
+      echo -e "\033[90m                          Нажми любую клавишу для выхода...\033[0m"
+      read -n 1 -s -r
+    '')
 
     # VPN скрипт
     (writeShellScriptBin "vpn" ''
@@ -203,6 +176,22 @@
       esac
     '')
 
+    # Power menu (rofi)
+    (writeShellScriptBin "power-menu" ''
+      chosen=$(printf "  Lock\n  Logout\n  Suspend\n  Reboot\n  Shutdown" | rofi -dmenu -i -p "Power" -theme-str '
+        window { width: 300px; }
+        listview { lines: 5; }
+      ')
+
+      case "$chosen" in
+        *Lock) hyprlock ;;
+        *Logout) hyprctl dispatch exit ;;
+        *Suspend) systemctl suspend ;;
+        *Reboot) systemctl reboot ;;
+        *Shutdown) systemctl poweroff ;;
+      esac
+    '')
+
     # CLI утилиты
     eza           # современный ls
     bat           # cat с подсветкой
@@ -213,10 +202,29 @@
 
     # Медиа
     imv           # просмотр изображений
+    yt-dlp        # для UltraScrap (скачивание песен караоке)
+
+    # Уведомления
+    libnotify     # для notify-send
 
     # Дополнительные шрифты для терминала
     nerd-fonts.symbols-only
   ];
+
+  # ===========================================================================
+  # DESKTOP ENTRIES
+  # ===========================================================================
+  xdg.desktopEntries = {
+    ultrastardx = {
+      name = "UltraStar Deluxe";
+      genericName = "Karaoke Game";
+      exec = "ultrastardx";
+      icon = "ultrastardx";
+      terminal = false;
+      categories = [ "Game" "Music" ];
+      comment = "Sing along to your favorite songs";
+    };
+  };
 
   # ===========================================================================
   # ДИРЕКТОРИИ
@@ -248,17 +256,69 @@
     };
     Service = {
       Type = "oneshot";
-      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.findutils}/bin/find /etc/nixos/wallpapers -type f \\( -name \"*.jpg\" -o -name \"*.png\" -o -name \"*.jpeg\" -o -name \"*.webp\" \\) | ${pkgs.coreutils}/bin/shuf -n 1 | ${pkgs.findutils}/bin/xargs awww img --transition-type grow --transition-pos center'";
+      Environment = [
+        "WAYLAND_DISPLAY=wayland-1"
+        "DISPLAY=:0"
+      ];
+      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.findutils}/bin/find /etc/nixos/wallpapers -type f \\( -name \"*.jpg\" -o -name \"*.png\" -o -name \"*.jpeg\" -o -name \"*.webp\" \\) | ${pkgs.coreutils}/bin/shuf -n 1 | ${pkgs.findutils}/bin/xargs /run/current-system/sw/bin/awww img --transition-type grow --transition-pos center'";
+    };
+  };
+
+  # Синхронизация календаря каждые 15 минут
+  systemd.user.services.vdirsyncer-sync = {
+    Unit = {
+      Description = "Sync calendars with vdirsyncer";
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.vdirsyncer}/bin/vdirsyncer sync";
+    };
+  };
+
+  systemd.user.timers.vdirsyncer-sync = {
+    Unit = {
+      Description = "Sync calendars every 15 minutes";
+    };
+    Timer = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "15min";
+    };
+    Install = {
+      WantedBy = [ "timers.target" ];
+    };
+  };
+
+  # Нотификации о событиях календаря (за 10 минут)
+  systemd.user.services.khal-notify = {
+    Unit = {
+      Description = "Calendar event notifications";
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.khal}/bin/khal list now 15m --format \"{title}\" 2>/dev/null | head -1 | xargs -I {} ${pkgs.libnotify}/bin/notify-send \"📅 Скоро\" \"{}\"'";
+    };
+  };
+
+  systemd.user.timers.khal-notify = {
+    Unit = {
+      Description = "Check calendar events every 5 minutes";
+    };
+    Timer = {
+      OnBootSec = "1min";
+      OnUnitActiveSec = "5min";
+    };
+    Install = {
+      WantedBy = [ "timers.target" ];
     };
   };
 
   systemd.user.timers.wallpaper-rotate = {
     Unit = {
-      Description = "Rotate wallpaper every 30 minutes";
+      Description = "Rotate wallpaper every 10 minutes";
     };
     Timer = {
-      OnCalendar = "*:0/30";  # Every 30 minutes
-      Persistent = true;
+      OnUnitActiveSec = "10min";
+      OnBootSec = "1min";
     };
     Install = {
       WantedBy = [ "timers.target" ];
@@ -409,6 +469,55 @@
     #shutdown {
       background-image: image(url("/run/current-system/sw/share/wlogout/icons/shutdown.png"));
     }
+  '';
+
+  # ===========================================================================
+  # KHAL (терминальный календарь)
+  # ===========================================================================
+  xdg.configFile."khal/config".text = ''
+    [calendars]
+
+    [[google]]
+    path = ~/.local/share/vdirsyncer/google/
+    color = auto
+    type = discover
+
+    [default]
+    default_calendar = google1
+    highlight_event_days = true
+
+    [locale]
+    timeformat = %H:%M
+    dateformat = %d.%m.%Y
+    longdateformat = %d.%m.%Y
+    datetimeformat = %d.%m.%Y %H:%M
+    longdatetimeformat = %d.%m.%Y %H:%M
+    firstweekday = 0
+  '';
+
+  # ===========================================================================
+  # VDIRSYNCER (синхронизация с Google Calendar)
+  # ===========================================================================
+  xdg.configFile."vdirsyncer/config".text = ''
+    [general]
+    status_path = "~/.local/share/vdirsyncer/status/"
+
+    [pair google]
+    a = "google_local"
+    b = "google_remote"
+    collections = ["tsaimikhail@gmail.com", "cln2qpr25pqni8r8dtm6ip31f506esjfelo2sthecdgmopbechgn4bj7dtnmer355phmur8@virtual"]
+    metadata = ["color"]
+
+    [storage google_local]
+    type = "filesystem"
+    path = "~/.local/share/vdirsyncer/google/"
+    fileext = ".ics"
+
+    [storage google_remote]
+    type = "google_calendar"
+    token_file = "~/.local/share/vdirsyncer/google_token"
+    client_id.fetch = ["command", "cat", "~/.config/vdirsyncer/client_id"]
+    client_secret.fetch = ["command", "cat", "~/.config/vdirsyncer/client_secret"]
   '';
 
   # ===========================================================================
