@@ -389,7 +389,7 @@
     windowrule = float on, match:title Picture-in-Picture
     windowrule = float on, match:class xdg-desktop-portal-gtk
     windowrule = float on, match:class cheatsheet
-    windowrule = size 1000 480, match:class cheatsheet
+    windowrule = size 1100 480, match:class cheatsheet
 
     # Размеры для плавающих
     windowrule = size 800 600, match:class pavucontrol

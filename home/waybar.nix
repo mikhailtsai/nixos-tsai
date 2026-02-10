@@ -11,7 +11,7 @@
     modules-right = [ "hyprland/language" "pulseaudio" "network" "battery" "tray" "custom/power" ];
 
     "hyprland/workspaces" = {
-      format = "{icon}";
+      format = "{name}";
       on-click = "activate";
     };
 
@@ -26,21 +26,22 @@
         warning = 30;
         critical = 15;
       };
-      format = "{capacity}% {icon}";
-      format-icons = [ "" "" "" "" "" ];
+      format = "🔋 {capacity}%";
+      format-charging = "⚡ {capacity}%";
+      format-plugged = "🔌 {capacity}%";
     };
 
     network = {
-      format-wifi = "{essid} ";
-      format-ethernet = "{ipaddr} ";
-      format-disconnected = "Disconnected ⚠";
+      format-wifi = "🟢 {essid}";
+      format-ethernet = "🌐 {ipaddr}";
+      format-disconnected = "🔴 offline";
     };
 
     pulseaudio = {
-      format = "{volume}% {icon}";
-      format-muted = "";
+      format = "{icon} {volume}%";
+      format-muted = "🔇 muted";
       format-icons = {
-        default = [ "" "" "" ];
+        default = [ "🔈" "🔉" "🔊" ];
       };
       on-click = "pavucontrol";
     };
@@ -65,7 +66,7 @@
   # Waybar - стили
   xdg.configFile."waybar/style.css".text = ''
     * {
-      font-family: "FiraCode Nerd Font";
+      font-family: "FiraCode Nerd Font", "Symbols Nerd Font", monospace;
       font-size: 13px;
     }
 
