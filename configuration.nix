@@ -387,6 +387,7 @@ in
     steam
     lutris
     heroic               # Epic Games launcher
+    mangohud
     mindustry
     wesnoth
     dwarf-fortress
@@ -454,6 +455,11 @@ in
   # ===========================================================================
   # STEAM
   # ===========================================================================
+  programs.gamescope = {
+    enable = true;
+    capSysNice = false;
+  };
+
   programs.steam = {
     enable = true;
     remotePlay.openFirewall = true;
@@ -567,9 +573,9 @@ in
   # ===========================================================================
   # УПРАВЛЕНИЕ ПИТАНИЕМ
   # ===========================================================================
-  # Профиль производительности — агрессивное охлаждение (кулеры на максимум)
+  # Профиль производительности — баланс между шумом и производительностью
   systemd.tmpfiles.rules = [
-    "w /sys/firmware/acpi/platform_profile - - - - performance"
+    "w /sys/firmware/acpi/platform_profile - - - - balanced-performance"
   ];
 
   services.logind.settings.Login = {
