@@ -50,7 +50,7 @@
 
     exec-once = waybar
     exec-once = nm-applet --indicator
-    exec-once = awww-daemon && sleep 0.5 && find /etc/nixos/wallpapers -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" -o -name "*.webp" \) | shuf -n 1 | xargs awww img --transition-type grow --transition-pos center
+    exec-once = awww-daemon && sleep 0.5 && smart-wallpaper
     exec-once = hypridle
     exec-once = mako
     exec-once = wl-paste --type text --watch cliphist store
@@ -90,9 +90,7 @@
     decoration {
       rounding = 10
       blur {
-        enabled = true
-        size = 3
-        passes = 1
+        enabled = false
       }
       shadow {
         enabled = true
@@ -135,6 +133,7 @@
     misc {
       force_default_wallpaper = 0
       disable_hyprland_logo = true
+      vfr = true
     }
 
     cursor {
@@ -154,6 +153,7 @@
     bind = $mod, R, exec, rofi -show run
     bind = $mod, L, exec, hyprlock
     bind = $mod, B, exec, firefox
+    bind = $mod SHIFT, B, exec, pkill waybar; waybar &
 
     # Меню выхода / выключения
     bind = $mod, M, exec, power-menu
@@ -172,7 +172,8 @@
     bind = $mod, slash, exec, kitty --class cheatsheet -e keybinds
 
     # Смена обоев
-    bind = $mod, W, exec, find /etc/nixos/wallpapers -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" -o -name "*.webp" \) | shuf -n 1 | xargs awww img --transition-type grow --transition-pos center
+    bind = $mod, W, exec, smart-wallpaper
+    bind = $mod SHIFT, W, exec, toggle-wallpaper
 
     # Состояние окна
     bind = $mod, V, togglefloating,
@@ -454,9 +455,10 @@
   # Hypridle - автоблокировка
   xdg.configFile."hypr/hypridle.conf".text = ''
     general {
-      lock_cmd = pidof hyprlock || hyprlock
+      lock_cmd = (sleep 10 && pidof hyprlock && hyprctl dispatch dpms off) & pidof hyprlock || hyprlock
       before_sleep_cmd = loginctl lock-session
       after_sleep_cmd = hyprctl dispatch dpms on
+      unlock_cmd = hyprctl dispatch dpms on
     }
 
     listener {
@@ -467,11 +469,11 @@
 
     listener {
       timeout = 1200
-      on-timeout = hyprlock
+      on-timeout = loginctl lock-session
     }
 
     listener {
-      timeout = 1800
+      timeout = 1210
       on-timeout = hyprctl dispatch dpms off
       on-resume = hyprctl dispatch dpms on
     }
@@ -480,14 +482,7 @@
 
   # Hyprlock - экран блокировки
   xdg.configFile."hypr/hyprlock.conf".text = ''
-    background {
-      monitor =
-      path = screenshot
-      blur_passes = 3
-      blur_size = 8
-    }
-
-    input-field {
+input-field {
       monitor =
       size = 200, 50
       outline_thickness = 3

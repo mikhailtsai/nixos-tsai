@@ -466,6 +466,7 @@ in
     dedicatedServer.openFirewall = true;
     localNetworkGameTransfers.openFirewall = true;
     extraPackages = with pkgs; [ gamescope ];
+    extraCompatPackages = with pkgs; [ proton-ge-bin ];
   };
 
   # ===========================================================================

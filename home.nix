@@ -216,6 +216,55 @@ let
       noDisplay = true;
     };
   }) hiddenPlugins);
+
+  # Скрипт для умной установки обоев: маленькие картинки не растягиваются
+  smart-wallpaper = pkgs.writeShellScriptBin "smart-wallpaper" ''
+    IMG=$(${pkgs.findutils}/bin/find /etc/nixos/wallpapers -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" -o -name "*.webp" \) | ${pkgs.coreutils}/bin/shuf -n 1)
+    [ -z "$IMG" ] && exit 1
+    eval $(${pkgs.imagemagick}/bin/identify -format 'W=%w H=%h' "$IMG")
+    # Разрешение монитора через hyprctl
+    SCREEN_W=$(hyprctl monitors -j | ${pkgs.jq}/bin/jq '.[0].width')
+    if [ "$W" -ge "$SCREEN_W" ]; then
+      RESIZE=crop
+    else
+      RESIZE=fit
+    fi
+    awww img --resize "$RESIZE" --fill-color 000000ff --transition-type grow --transition-pos center "$IMG"
+  '';
+
+  # Переключение обоев: отключает/включает фон и автообновление
+  toggle-wallpaper = pkgs.writeShellScriptBin "toggle-wallpaper" ''
+    STATE_FILE="/tmp/wallpaper-disabled"
+
+    if [ -f "$STATE_FILE" ]; then
+        # Фон отключен, включаем обратно
+        ${pkgs.procps}/bin/pkill -f "swaybg"
+
+        # Запускаем daemon и устанавливаем новый фон
+        awww-daemon &
+        sleep 0.5
+        ${smart-wallpaper}/bin/smart-wallpaper
+
+        # Включаем systemd timer обратно
+        systemctl --user start wallpaper-rotate.timer
+
+        rm "$STATE_FILE"
+    else
+        # Фон включен, отключаем
+        # Останавливаем systemd timer
+        systemctl --user stop wallpaper-rotate.timer
+
+        # Убиваем daemon и awww
+        ${pkgs.procps}/bin/pkill awww-daemon
+        ${pkgs.procps}/bin/pkill awww
+
+        # Устанавливаем черный фон
+        ${pkgs.procps}/bin/pkill swaybg
+        ${pkgs.swaybg}/bin/swaybg -c "#000000" &
+
+        touch "$STATE_FILE"
+    fi
+  '';
 in
 {
   imports = [
@@ -329,9 +378,13 @@ in
   # ===========================================================================
   # ДОПОЛНИТЕЛЬНЫЕ ПАКЕТЫ ПОЛЬЗОВАТЕЛЯ
   # ===========================================================================
-  home.packages = with pkgs; [
+  home.packages = [
+    smart-wallpaper
+    toggle-wallpaper
+  ] ++ (with pkgs; [
     # Node.js
     nodejs
+    yarn
 
     # Шпаргалка по хоткеям (Super+/)
     (writeShellScriptBin "keybinds" ''
@@ -366,6 +419,7 @@ in
       printf "  ''${Y}Shift + Print''${R}          Весь экран          ''${Y}Super + Shift + C''${R}      Пипетка\n"
       printf "  ''${Y}Super + Print''${R}          Swappy              ''${Y}Super + \\ ''${R}             Пароли\n"
       printf "  ''${Y}Alt + Print''${R}            Активное окно       ''${Y}Super + W''${R}              Обои\n"
+      printf "                                              ''${Y}Super + Shift + W''${R}      Вкл/выкл фон\n"
       printf "\n"
       printf "''${B}  МЫШЬ                                       ПРОЧЕЕ''${R}\n"
       printf "  ''${Y}Super + ЛКМ''${R}            Перетащить          ''${Y}Alt + Shift''${R}            Раскладка\n"
@@ -432,7 +486,7 @@ in
 
     # Дополнительные шрифты для терминала
     nerd-fonts.symbols-only
-  ];
+  ]);
 
   # ===========================================================================
   # DESKTOP ENTRIES
@@ -490,7 +544,7 @@ in
         "WAYLAND_DISPLAY=wayland-1"
         "DISPLAY=:0"
       ];
-      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.findutils}/bin/find /etc/nixos/wallpapers -type f \\( -name \"*.jpg\" -o -name \"*.png\" -o -name \"*.jpeg\" -o -name \"*.webp\" \\) | ${pkgs.coreutils}/bin/shuf -n 1 | ${pkgs.findutils}/bin/xargs /run/current-system/sw/bin/awww img --transition-type grow --transition-pos center'";
+      ExecStart = "${smart-wallpaper}/bin/smart-wallpaper";
     };
   };
 
