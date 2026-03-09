@@ -418,10 +418,6 @@
     windowrule = float on, match:class steam, match:title Friends List
     windowrule = float on, match:class steam, match:title Steam Settings
 
-    # Battle.net и Hearthstone - сделать обычными окнами
-    windowrule = tile on, match:title Battle.net
-    windowrule = tile on, match:title Hearthstone
-
     # Steam-клиент: нотификации не должны красть фокус
     windowrule = suppress_event activate, match:class ^steam$
 
@@ -449,7 +445,7 @@
     # ЖЕСТЫ ТАЧПАДА
     # ==========================================================================
     gesture = 3, horizontal, workspace
-    
+
   '';
 
   # Hypridle - автоблокировка

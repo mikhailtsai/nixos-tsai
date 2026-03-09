@@ -11,30 +11,29 @@
   outputs = { self, nixpkgs, home-manager, awww, ... }:
     let
       system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+      vars   = import ./vars.nix;
 
-      # Общие модули для всех конфигураций
       commonModules = [
         ./configuration.nix
         home-manager.nixosModules.home-manager
         {
-          home-manager.useGlobalPkgs = true;
+          home-manager.useGlobalPkgs  = true;
           home-manager.useUserPackages = true;
-          home-manager.users.leet = import ./home.nix;
+          home-manager.extraSpecialArgs = { inherit awww vars; };
+          home-manager.users.${vars.username} = import ./home/default.nix;
         }
       ];
     in
     {
-      # Основная конфигурация для реального железа
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = { inherit awww; };
+        specialArgs = { inherit awww vars; };
         modules = commonModules;
       };
 
-      # Конфигурация для тестирования в VMware
       nixosConfigurations.nixos-vmware = nixpkgs.lib.nixosSystem {
         inherit system;
+        specialArgs = { inherit awww vars; };
         modules = commonModules ++ [ ./vmware.nix ];
       };
     };
