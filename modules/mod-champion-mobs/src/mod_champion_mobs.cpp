@@ -1,26 +1,26 @@
 /*
  * mod-champion-mobs
  *
- * 3% chance on spawn to turn any eligible mob into a Champion:
- *   - HP × 20, damage × 2.5 / 2.25 / 2.0 / 1.75 по тиру, armor × 3, scale × 1.6
+ * Шанс CHAMPION_CHANCE на спавн превратить подходящего моба в Чемпиона:
+ *   - HP/урон/броня масштабируются по тиру (см. константы CHAMPION_*/LEGEND_*)
  *   - Immune to stun / fear / sleep / polymorph / charm / horror / Turn Undead
  *   - Visual auras: fire ring + rune circle + golden body glow
  *   - Creature yells on aggro, chat announce in 80-yard radius on spawn and on aggro
- *   - On kill: bonus XP (level × 200 per group member) + generous gold
+ *   - On kill: bonus XP + generous gold
  *     + бонусный лут по тиру (BoE зелёные/синие/фиолетовые из DB)
  *     stacked ON TOP of the creature's normal loot
  *
- * Тиры чемпионов (все с 3% шансом):
- *   Tier 1 — Обычный   (NORMAL/RARE в открытом мире):  2–4 зелёных/синих,            HP ×20
- *   Tier 2 — Элитный   (ELITE/RAREELITE, не босс):     2–4 зелёных/синих + 1–2 epic, HP ×20
- *   Tier 3 — Босс данжа (в instance_encounters, данж): 2–4 зелёных/синих + 6–8 epic, HP ×20
+ * Тиры чемпионов:
+ *   Tier 1 — Обычный   (NORMAL/RARE в открытом мире):  2–4 зелёных/синих
+ *   Tier 2 — Элитный   (ELITE/RAREELITE, не босс):     2–4 зелёных/синих + 1–2 epic
+ *   Tier 3 — Босс данжа (в instance_encounters, данж): 2–4 зелёных/синих + 6–8 epic
  *   Tier 4 — Босс рейда (в instance_encounters, рейд,
- *                         или WORLDBOSS):               2–4 зелёных/синих + 25–30 epic, HP ×20
+ *                         или WORLDBOSS):               2–4 зелёных/синих + 25–30 epic
  *
- * Легендарные чемпионы (20% от чемпионов, ~0.6% всех мобов):
- *   - Те же тиры, но: scale ×2.0, золотые ауры, объявление на 150 ярдов
+ * Легендарные чемпионы (LEGEND_CHANCE от чемпионов, только мобы 40+):
+ *   - Те же тиры, усиленные ауры, объявление на 150 ярдов
  *   - Активные способности в бою: прыжок за спину / призыв стаи / топот (стан 3с, 35 ярдов)
- *   - Двойное количество эпиков + 10% шанс на предмет legendary (orange) качества
+ *   - Двойное количество эпиков + шанс на предмет legendary (orange) качества
  *
  * Боссы определяются через instance_encounters.creditEntry (creditType=0) —
  * та же таблица, по которой LFG показывает "X из Y боссов убито".
@@ -61,32 +61,37 @@
 
 // ── Champion ──────────────────────────────────────────────────────────────────
 static constexpr float  CHAMPION_CHANCE           = 3.0f;
-static constexpr float  CHAMPION_HP_MULT          = 20.0f;
+static constexpr float  CHAMPION_HP_MULT          = 15.0f;  // обычные + элитные
+static constexpr float  CHAMPION_HP_MULT_DUNGEON  =  8.0f;  // боссы данжа
+static constexpr float  CHAMPION_HP_MULT_RAID     =  4.0f;  // боссы рейда
 static constexpr float  CHAMPION_DMG_MULT         = 5.0f;   // обычные
-static constexpr float  CHAMPION_DMG_MULT_ELITE   = 4.5f;  // элитные
-static constexpr float  CHAMPION_DMG_MULT_DUNGEON = 4.0f;   // боссы данжа
-static constexpr float  CHAMPION_DMG_MULT_RAID    = 3.5f;  // боссы рейда
+static constexpr float  CHAMPION_DMG_MULT_ELITE   = 4.0f;  // элитные
+static constexpr float  CHAMPION_DMG_MULT_DUNGEON = 3.0f;  // боссы данжа
+static constexpr float  CHAMPION_DMG_MULT_RAID    = 2.0f;  // боссы рейда
 static constexpr float  CHAMPION_ARMOR_MULT       = 3.0f;
 static constexpr float  CHAMPION_SCALE            = 1.6f;
 static constexpr uint32 CHAMPION_XP_PER_LVL       = 400;
 
 // ── Legendary (подмножество чемпионов) ────────────────────────────────────────
-static constexpr float  LEGEND_CHANCE      = 20.0f;  // % чемпионов, которые становятся легендарными
+static constexpr float  LEGEND_CHANCE      = 10.0f;  // % чемпионов, которые становятся легендарными
 static constexpr float  LEGEND_SCALE       = 2.0f;   // итоговый множитель размера (заменяет CHAMPION_SCALE)
-static constexpr float  LEGEND_HP_MULT     = 30.0f;  // HP легендарного (от базового HP моба)
-static constexpr float  LEGEND_DMG_MULT    = 7.0f;   // урон легендарного (от базового, независимо от тира)
+static constexpr float  LEGEND_HP_MULT         = 25.0f;  // легендарный обычный + элитный
+static constexpr float  LEGEND_HP_MULT_DUNGEON = 12.0f;  // легендарный босс данжа
+static constexpr float  LEGEND_HP_MULT_RAID    =  8.0f;  // легендарный босс рейда
+static constexpr float  LEGEND_DMG_MULT         = 6.0f;  // легендарный обычный
+static constexpr float  LEGEND_DMG_MULT_ELITE   = 5.0f;  // легендарный элитный
+static constexpr float  LEGEND_DMG_MULT_DUNGEON = 4.0f;  // легендарный босс данжа
+static constexpr float  LEGEND_DMG_MULT_RAID    = 3.0f;  // легендарный босс рейда
 
 // Кулдауны способностей (мс)
 static constexpr uint32 LEGEND_BLINK_CD  = 15'000; // прыжок за спину
-static constexpr uint32 LEGEND_SUMMON_CD = 45'000; // призыв стаи
-static constexpr uint32 LEGEND_STOMP_CD  = 60'000; // топот (Earthquake — 3с стан, 35 ярдов)
+static constexpr uint32 LEGEND_STOMP_CD  = 30'000; // стая + стан каждые 30 сек
 
 // Задержка перед первым применением (чтобы способности не срабатывали одновременно)
 static constexpr uint32 LEGEND_BLINK_INIT  =  8'000;
-static constexpr uint32 LEGEND_SUMMON_INIT = 25'000;
-static constexpr uint32 LEGEND_STOMP_INIT  = 40'000;
+static constexpr uint32 LEGEND_STOMP_INIT  = 20'000; // первый цикл стая+стан через 20 сек
 
-static constexpr uint32 LEGEND_STOMP_SPELL = 33919; // Earthquake: 3с стан, 35 ярдов, vis=5424
+static constexpr uint32 LEGEND_STOMP_SPELL = 20549; // War Stomp: 2с стан, 8 ярдов, без урона
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SOUND IDs  (WotLK 3.3.5a)
@@ -280,6 +285,9 @@ struct ChampionData
     uint32 summonTimer     = 0;
     uint32 stompTimer      = 0;
     uint32 aggroSoundTimer = 0; // отложенный стингер при агро легендарного
+
+    // GUIDы суммонов, призванных этим чемпионом (для корректной очистки при смерти)
+    std::vector<ObjectGuid> minionGuids;
 };
 
 static std::mutex                               s_mutex;
@@ -310,7 +318,6 @@ static void SetLegendary(Creature const* c, uint32 newTargetHp)
     d.legendary   = true;
     d.targetMaxHp = newTargetHp;
     d.blinkTimer  = LEGEND_BLINK_INIT;
-    d.summonTimer = LEGEND_SUMMON_INIT;
     d.stompTimer  = LEGEND_STOMP_INIT;
 }
 
@@ -327,21 +334,89 @@ static bool IsLegendaryChampion(Creature const* c)
     return it != s_champions.end() && it->second.legendary;
 }
 
-// Возвращает целевой HP и legendary-флаг за один lock
-struct ChampionState { uint32 targetMaxHp = 0; bool legendary = false; };
+// Возвращает целевой HP, scale и legendary-флаг за один lock
+struct ChampionState { uint32 targetMaxHp = 0; float targetScale = 0.f; bool legendary = false; };
 static ChampionState GetChampionState(Creature const* c)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
     auto it = s_champions.find(c->GetGUID().GetRawValue());
     if (it == s_champions.end())
         return {};
-    return { it->second.targetMaxHp, it->second.legendary };
+    auto const& d = it->second;
+    float ts = d.origScale * (d.legendary ? LEGEND_SCALE : CHAMPION_SCALE);
+    return { d.targetMaxHp, ts, d.legendary };
 }
 
 static void UnmarkChampion(Creature const* c)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
     s_champions.erase(c->GetGUID().GetRawValue());
+}
+
+static void RegisterMinion(Creature const* champion, Creature const* minion)
+{
+    std::lock_guard<std::mutex> lk(s_mutex);
+    auto it = s_champions.find(champion->GetGUID().GetRawValue());
+    if (it != s_champions.end())
+        it->second.minionGuids.push_back(minion->GetGUID());
+}
+
+// Синхронизирует цель атаки всех иллюзий с текущей целью чемпиона.
+// Вызывается в OnAllCreatureUpdate — дёшево если цель не изменилась.
+static void SyncMinionTargets(Creature* champion, Unit* victim)
+{
+    std::vector<ObjectGuid> guids;
+    {
+        std::lock_guard<std::mutex> lk(s_mutex);
+        auto it = s_champions.find(champion->GetGUID().GetRawValue());
+        if (it == s_champions.end() || it->second.minionGuids.empty())
+            return;
+        guids = it->second.minionGuids;
+    }
+
+    Map* map = champion->GetMap();
+    if (!map)
+        return;
+
+    for (ObjectGuid const& guid : guids)
+    {
+        if (Creature* minion = map->GetCreature(guid))
+            if (minion->IsAlive() && minion->GetVictim() != victim)
+                minion->AI()->AttackStart(victim);
+    }
+}
+
+// Удаляет иллюзии/суммонов чемпиона при его смерти или деспауне.
+// Вызывать перед UnmarkChampion — пока данные ещё в map.
+static void DespawnMinions(Creature* champion)
+{
+    std::vector<ObjectGuid> guids;
+    {
+        std::lock_guard<std::mutex> lk(s_mutex);
+        auto it = s_champions.find(champion->GetGUID().GetRawValue());
+        if (it == s_champions.end())
+            return;
+        guids = std::move(it->second.minionGuids);
+    }
+
+    if (guids.empty())
+        return;
+
+    Map* map = champion->GetMap();
+    if (!map)
+        return;
+
+    for (ObjectGuid const& guid : guids)
+    {
+        if (Creature* minion = map->GetCreature(guid))
+            if (minion->IsAlive())
+            {
+                // Сначала явно рвём все боевые связи — убираем CombatReference-ы
+                // из _pveRefs игроков/ботов, не дожидаясь CleanupBeforeRemoveFromMap.
+                minion->CombatStop(/*includingCast=*/true);
+                minion->DespawnOrUnsummon(0ms);
+            }
+    }
 }
 
 static void ApplyChampionAuras(Creature* c, bool legendary)
@@ -568,7 +643,6 @@ static LegendaryAbilityResult TickLegendaryAbilities(Creature const* c, uint32 d
     };
 
     tick(d.blinkTimer,  LEGEND_BLINK_CD,  result.doBlink);
-    tick(d.summonTimer, LEGEND_SUMMON_CD, result.doSummon);
     tick(d.stompTimer,  LEGEND_STOMP_CD,  result.doStomp);
 
     return result;
@@ -593,33 +667,67 @@ static void DoBlinkBehindTarget(Creature* c)
     c->NearTeleportTo(bx, by, bz, ori);
 }
 
-// ── Топот (Earthquake) ───────────────────────────────────────────────────────
-// Кастует Earthquake (33919): 3с стан, 35 ярдов вокруг чемпиона.
+// ── Топот (War Stomp) ────────────────────────────────────────────────────────
+// Кастует War Stomp (20549): 2с стан, 8 ярдов вокруг чемпиона, без урона.
 static void DoStomp(Creature* c)
 {
     c->CastSpell(c, LEGEND_STOMP_SPELL, false);
 }
 
-// ── Призыв стаи ──────────────────────────────────────────────────────────────
-// Призывает 3 обычных моба того же entry вокруг легендарного.
-// IsSummon() == true для TempSummon → IsEligible() вернёт false → они не станут чемпионами.
-static void DoSummonMinions(Creature* c)
+// ── Призыв иллюзий ───────────────────────────────────────────────────────────
+// Создаёт 3 копии легендарного чемпиона, которые атакуют его цель.
+// NOT_SELECTABLE + IMMUNE_TO_PC/NPC: нельзя кликнуть/таргетировать, иммунны
+// к любому урону и АоЕ — по сути дополнительный урон по танку без возможности
+// их убить или АоЕшнуть. DespawnMinions делает CombatStop перед удалением.
+static void DoSummonIllusions(Creature* c)
 {
-    static constexpr int   COUNT    = 3;
-    static constexpr float DIST     = 5.0f;
-    static constexpr uint32 LIFETIME = 60'000; // 60с
+    static constexpr int     COUNT            = 3;
+    static constexpr float   DIST             = 4.0f;
+    static constexpr uint32  ILLUSION_LIFETIME = 12'000; // 12 секунд
 
     for (int i = 0; i < COUNT; ++i)
     {
         float angle = float(i) / COUNT * 2.0f * float(M_PI);
         float x = c->GetPositionX() + DIST * std::cos(angle);
         float y = c->GetPositionY() + DIST * std::sin(angle);
-        c->SummonCreature(c->GetEntry(), x, y, c->GetPositionZ(),
-                          c->GetOrientation(), TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, LIFETIME);
+
+        Creature* illusion = c->SummonCreature(
+            c->GetEntry(), x, y, c->GetPositionZ(), c->GetOrientation(),
+            TEMPSUMMON_TIMED_DESPAWN, ILLUSION_LIFETIME);
+
+        if (!illusion)
+            continue;
+
+        // NOT_SELECTABLE    — нельзя кликнуть/таргетировать мышью или спеллом
+        // IMMUNE_TO_PC/NPC  — иммун к любому урону и АоЕ (и от игроков, и от ботов/мобов)
+        // БЕЗ NON_ATTACKABLE — иллюзии сами могут входить в бой и атаковать
+        illusion->SetFlag(UNIT_FIELD_FLAGS,
+            UNIT_FLAG_NOT_SELECTABLE |
+            UNIT_FLAG_IMMUNE_TO_PC   |
+            UNIT_FLAG_IMMUNE_TO_NPC);
+        illusion->SetReactState(REACT_AGGRESSIVE);
+        // 0.75 от базового размера (до множителя чемпиона/легендарного)
+        {
+            std::lock_guard<std::mutex> lk(s_mutex);
+            auto it = s_champions.find(c->GetGUID().GetRawValue());
+            float baseScale = (it != s_champions.end()) ? it->second.origScale : 1.0f;
+            illusion->SetObjectScale(baseScale * 0.75f);
+        }
+
+        // Сразу атаковать ту же цель, что и чемпион
+        if (Unit* victim = c->GetVictim())
+            illusion->AI()->AttackStart(victim);
+
+        // Золотые ауры легендарного — иллюзии выглядят как призрачные копии
+        illusion->AddAura(AURA_LEGEND_GOLD,     illusion);
+        illusion->AddAura(AURA_LEGEND_RADIANCE, illusion);
+        illusion->AddAura(AURA_FIERY,           illusion);
+
+        RegisterMinion(c, illusion);
     }
 
     AnnounceNearby(c, 80.0f,
-        "|cffFF8000[Legendary Champion]|r " + c->GetName() + " calls for reinforcements!");
+        "|cffFF8000[Legendary Champion]|r " + c->GetName() + " conjures spectral illusions!");
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -742,11 +850,23 @@ public:
         if (!IsEligible(c) || IsChampion(c) || !roll_chance_f(CHAMPION_CHANCE))
             return;
 
+        // Обычные чемпионы — только мобы 15+, легендарные — только 40+
+        uint8 level = c->GetLevel();
+        if (level < 15)
+            return;
+
         ChampionTier tier = GetChampionTier(c);
 
         // ── HP ────────────────────────────────────────────────────────
         uint32 baseHp = c->GetMaxHealth();
-        uint32 newHp  = uint32(float(baseHp) * CHAMPION_HP_MULT);
+        float hpMult;
+        switch (tier)
+        {
+            case CHAMPION_TIER_DUNGEON_BOSS: hpMult = CHAMPION_HP_MULT_DUNGEON; break;
+            case CHAMPION_TIER_RAID_BOSS:    hpMult = CHAMPION_HP_MULT_RAID;    break;
+            default:                         hpMult = CHAMPION_HP_MULT;         break;
+        }
+        uint32 newHp = uint32(float(baseHp) * hpMult);
         c->SetCreateHealth(newHp);
         c->SetMaxHealth(newHp);
         c->SetHealth(newHp);
@@ -790,18 +910,32 @@ public:
 
         MarkChampion(c, newHp, baseHp, origMinDmg, origMaxDmg, origArmor, origScale);
 
-        // ── Легендарный апгрейд (5% от чемпионов) ────────────────────
-        if (roll_chance_f(LEGEND_CHANCE))
+        // ── Легендарный апгрейд — только мобы 40+ ───────────────────────
+        if (level >= 40 && roll_chance_f(LEGEND_CHANCE))
         {
-            // HP ×30 от базового (переопределяем champion HP ×20)
-            uint32 legHp = uint32(float(baseHp) * LEGEND_HP_MULT);
+            float legHpMult;
+            switch (tier)
+            {
+                case CHAMPION_TIER_DUNGEON_BOSS: legHpMult = LEGEND_HP_MULT_DUNGEON; break;
+                case CHAMPION_TIER_RAID_BOSS:    legHpMult = LEGEND_HP_MULT_RAID;    break;
+                default:                         legHpMult = LEGEND_HP_MULT;         break;
+            }
+            uint32 legHp = uint32(float(baseHp) * legHpMult);
             c->SetCreateHealth(legHp);
             c->SetMaxHealth(legHp);
             c->SetHealth(legHp);
 
-            // Урон ×7 от базового (переопределяем tier-зависимый множитель чемпиона)
-            c->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, origMinDmg * LEGEND_DMG_MULT);
-            c->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, origMaxDmg * LEGEND_DMG_MULT);
+            // Урон — тир-зависимый множитель легендарного
+            float legDmgMult;
+            switch (tier)
+            {
+                case CHAMPION_TIER_ELITE:        legDmgMult = LEGEND_DMG_MULT_ELITE;   break;
+                case CHAMPION_TIER_DUNGEON_BOSS: legDmgMult = LEGEND_DMG_MULT_DUNGEON; break;
+                case CHAMPION_TIER_RAID_BOSS:    legDmgMult = LEGEND_DMG_MULT_RAID;    break;
+                default:                         legDmgMult = LEGEND_DMG_MULT;         break;
+            }
+            c->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, origMinDmg * legDmgMult);
+            c->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, origMaxDmg * legDmgMult);
             c->UpdateDamagePhysical(BASE_ATTACK);
 
             // Размер — переопределяем на LEGEND_SCALE от оригинала
@@ -840,9 +974,12 @@ public:
     void OnCreatureRemoveWorld(Creature* c) override
     {
         if (IsChampion(c))
+        {
             LOG_WARN("module",
                 "mod-champion-mobs: [REMOVE] {} (entry={} guid={:#x}) removed while ALIVE",
                 c->GetName(), c->GetEntry(), c->GetGUID().GetRawValue());
+            DespawnMinions(c);
+        }
         UnmarkChampion(c);
     }
 
@@ -869,6 +1006,10 @@ public:
             c->SetMaxHealth(state.targetMaxHp);
             c->SetHealth(uint32(float(state.targetMaxHp) * ratio));
         }
+
+        // ── Scale watchdog: что-то (evade, AutoBalance, спелл) могло сбросить scale.
+        if (std::abs(c->GetObjectScale() - state.targetScale) > 0.01f)
+            c->SetObjectScale(state.targetScale);
 
         // ── Aura watchdog: evade вызывает RemoveAllAuras().
         //    Восстанавливаем только вне боя (в бою ауры свежие от спауна/агро).
@@ -904,10 +1045,12 @@ public:
         // ── Legendary abilities (только в бою и при наличии цели) ─────
         if (state.legendary && c->IsInCombat() && c->GetVictim())
         {
+            // Синхронизируем цели иллюзий с текущей целью чемпиона
+            SyncMinionTargets(c, c->GetVictim());
+
             LegendaryAbilityResult ab = TickLegendaryAbilities(c, diff);
             if (ab.doBlink)  DoBlinkBehindTarget(c);
-            if (ab.doSummon) DoSummonMinions(c);
-            if (ab.doStomp)  DoStomp(c);
+            if (ab.doStomp)  { DoSummonIllusions(c); DoStomp(c); }
         }
     }
 };
@@ -972,21 +1115,37 @@ public:
         }
 
         // ── HUD-сообщение для игрока ──────────────────────────────────
-        const char* dmgStr;
+        float hudHpMult;
+        float hudDmgMult;
         if (isLegendary)
         {
-            dmgStr = "7";
+            switch (tier)
+            {
+                case CHAMPION_TIER_DUNGEON_BOSS: hudHpMult = LEGEND_HP_MULT_DUNGEON; hudDmgMult = LEGEND_DMG_MULT_DUNGEON; break;
+                case CHAMPION_TIER_RAID_BOSS:    hudHpMult = LEGEND_HP_MULT_RAID;    hudDmgMult = LEGEND_DMG_MULT_RAID;    break;
+                case CHAMPION_TIER_ELITE:        hudHpMult = LEGEND_HP_MULT;         hudDmgMult = LEGEND_DMG_MULT_ELITE;   break;
+                default:                         hudHpMult = LEGEND_HP_MULT;         hudDmgMult = LEGEND_DMG_MULT;         break;
+            }
         }
         else
         {
             switch (tier)
             {
-                case CHAMPION_TIER_ELITE:        dmgStr = "4.5"; break;
-                case CHAMPION_TIER_DUNGEON_BOSS: dmgStr = "4.0"; break;
-                case CHAMPION_TIER_RAID_BOSS:    dmgStr = "3.5"; break;
-                default:                         dmgStr = "5";   break;
+                case CHAMPION_TIER_DUNGEON_BOSS: hudHpMult = CHAMPION_HP_MULT_DUNGEON; hudDmgMult = CHAMPION_DMG_MULT_DUNGEON; break;
+                case CHAMPION_TIER_RAID_BOSS:    hudHpMult = CHAMPION_HP_MULT_RAID;    hudDmgMult = CHAMPION_DMG_MULT_RAID;    break;
+                case CHAMPION_TIER_ELITE:        hudHpMult = CHAMPION_HP_MULT;         hudDmgMult = CHAMPION_DMG_MULT_ELITE;   break;
+                default:                         hudHpMult = CHAMPION_HP_MULT;         hudDmgMult = CHAMPION_DMG_MULT;         break;
             }
         }
+
+        // Форматируем число: убираем ".0" если целое
+        auto fmtMult = [](float v) -> std::string {
+            if (v == std::floor(v))
+                return std::to_string(int(v));
+            char buf[16];
+            std::snprintf(buf, sizeof(buf), "%.1f", v);
+            return buf;
+        };
 
         std::string rewardLine = "|cffFFD700Reward:|r bonus XP + gold + green/blue gear";
         switch (tier)
@@ -1003,9 +1162,10 @@ public:
             rewardLine += " |cffFF8000+ LEGENDARY LOOT|r";
 
         std::string dangerLine =
-            std::string("|cffFF4444Danger:|r HP x") + (isLegendary ? "30" : "20") +
-            "  /  Damage x" + dmgStr +
-            "  /  Armor x3  |cffAAAAAA(CC immune)|r";
+            "|cffFF4444Danger:|r HP x" + fmtMult(hudHpMult) +
+            "  /  Damage x" + fmtMult(hudDmgMult) +
+            "  /  Armor x" + fmtMult(CHAMPION_ARMOR_MULT) +
+            "  |cffAAAAAA(CC immune)|r";
         if (isLegendary)
             dangerLine += "  |cffFF8000[Blink / Summon / Stomp]|r";
 
@@ -1038,8 +1198,9 @@ public:
             ? killer->GetCharmerOrOwnerPlayerOrPlayerItself()
             : nullptr;
 
-        // Проверяем легендарность ДО UnmarkChampion — после записи уже нет
+        // Проверяем легендарность и убираем суммонов ДО UnmarkChampion — после записи уже нет
         bool isLegendary = IsLegendaryChampion(c);
+        DespawnMinions(c);
         UnmarkChampion(c);
         BuildChampionLoot(c, isLegendary);
 
