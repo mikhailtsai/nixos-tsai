@@ -76,13 +76,13 @@
       "AiPlayerbot.SelfBotLevel"              = "2";
       "AiPlayerbot.SyncLevelWithPlayers"      = "1";
       "AiPlayerbot.RandomBotXPRate"           = "1";    # как у игроков
-      "AiPlayerbot.MinRandomBots"             = "1170";
-      "AiPlayerbot.MaxRandomBots"             = "1170";
+      "AiPlayerbot.MinRandomBots"             = "1000";
+      "AiPlayerbot.MaxRandomBots"             = "1000";
       "AiPlayerbot.AddClassAccountPoolSize"   = "0";   # отключаем пул AddClass-ботов
-      # Старт с 1-го уровня — после создания поднять до 80
+      # Уровни 1-80 с равномерным распределением
       "AiPlayerbot.RandomBotMinLevel"         = "1";
-      "AiPlayerbot.RandomBotMaxLevel"         = "1";
-      "AiPlayerbot.RandomBotMinLevelChance"   = "1";   # 100% шанс стартовать на min-уровне
+      "AiPlayerbot.RandomBotMaxLevel"         = "80";
+      "AiPlayerbot.RandomBotMinLevelChance"   = "0";
       "AiPlayerbot.RandomBotMaxLevelChance"   = "0";
       # Боты мгновенно пасуют — roll-окна закрываются сразу, лут не пропадает по таймауту.
       # AoE-loot открывает до 16 roll-окон одновременно, боты не успевают при greed → баг.
@@ -94,8 +94,8 @@
       "AiPlayerbot.RandomGearQualityLimit"    = "0";
       "AiPlayerbot.IncrementalGearInit"       = "0";
       "AiPlayerbot.AutoEquipUpgradeLoot"      = "1";
-      "AiPlayerbot.RandomBotAllianceRatio"    = "80";
-      "AiPlayerbot.RandomBotHordeRatio"       = "20";
+      "AiPlayerbot.RandomBotAllianceRatio"    = "50";
+      "AiPlayerbot.RandomBotHordeRatio"       = "50";
     };
 
     worldserver.extraSettings = {

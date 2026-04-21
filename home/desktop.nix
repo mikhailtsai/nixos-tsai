@@ -12,6 +12,10 @@
       package = pkgs.papirus-icon-theme;
       name    = "Papirus-Dark";
     };
+    gtk4.theme = {
+      package = pkgs.adw-gtk3;
+      name    = "adw-gtk3-dark";
+    };
   };
 
   # Qt тема
