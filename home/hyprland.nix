@@ -79,7 +79,7 @@
       gaps_in = 5
       gaps_out = 10
       border_size = 2
-      col.active_border = rgba(33ccffee) rgba(00ff99ee) 45deg
+      col.active_border = rgba(33ccffee)
       col.inactive_border = rgba(595959aa)
       layout = dwindle
     }
@@ -111,7 +111,7 @@
       animation = windows, 1, 5, snappy
       animation = windowsOut, 1, 5, default, popin 80%
       animation = border, 1, 10, default
-      animation = borderangle, 1, 8, default
+      animation = borderangle, 0, 8, default
       animation = fade, 1, 5, smooth
       animation = workspaces, 1, 4, snappy, slide
     }
@@ -137,7 +137,7 @@
     }
 
     cursor {
-      no_hardware_cursors = true
+      no_hardware_cursors = false
     }
 
     # ==========================================================================
@@ -410,8 +410,8 @@
     windowrule = center on, match:class mpv
 
 
-    # Прозрачность только для терминала
-    windowrule = opacity 0.95, match:class kitty
+    # Прозрачность убрана — вызывала лишний compositing каждый кадр
+    # windowrule = opacity 0.95, match:class kitty
 
     # Picture-in-Picture поверх всех
     windowrule = pin on, match:title Picture-in-Picture

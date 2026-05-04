@@ -150,6 +150,17 @@
     };
   };
 
+  # ── Управление AzerothCore без пароля (для waybar-кнопки) ───────────────────
+  security.sudo.extraRules = [{
+    users = [ vars.username ];
+    commands = [
+      { command = "${pkgs.systemd}/bin/systemctl start azerothcore-world azerothcore-auth";
+        options = [ "NOPASSWD" ]; }
+      { command = "${pkgs.systemd}/bin/systemctl stop azerothcore-world azerothcore-auth";
+        options = [ "NOPASSWD" ]; }
+    ];
+  }];
+
   # ── zram swap ────────────────────────────────────────────────────────────────
   # Буфер сжатой памяти — защита от OOM при одновременном запуске Steam + AzerothCore
   zramSwap = {

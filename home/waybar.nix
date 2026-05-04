@@ -8,7 +8,7 @@
     height = 30;
     modules-left = [ "hyprland/workspaces" "hyprland/window" ];
     modules-center = [ "clock" ];
-    modules-right = [ "hyprland/language" "pulseaudio" "network" "battery" "custom/swaync" "tray" "custom/power" ];
+    modules-right = [ "hyprland/language" "pulseaudio" "network" "battery" "custom/wow" "custom/swaync" "tray" "custom/power" ];
 
     "hyprland/workspaces" = {
       format = "{name}";
@@ -54,6 +54,14 @@
 
     tray = {
       spacing = 10;
+    };
+
+    "custom/wow" = {
+      exec = "wow-status";
+      on-click = "wow-toggle";
+      interval = 5;
+      return-type = "json";
+      tooltip = true;
     };
 
     "custom/swaync" = {
@@ -108,13 +116,21 @@
       color: #33ccff;
     }
 
-    #clock, #battery, #network, #pulseaudio, #tray, #custom-power, #language {
+    #clock, #battery, #network, #pulseaudio, #tray, #custom-power, #language, #custom-wow {
       padding: 0 10px;
     }
 
     #language {
       color: #33ccff;
       font-weight: bold;
+    }
+
+    #custom-wow.running {
+      color: #00ff99;
+    }
+
+    #custom-wow.stopped {
+      color: #666666;
     }
 
     #custom-swaync {

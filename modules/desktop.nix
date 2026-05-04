@@ -58,7 +58,7 @@
 
   # Управление питанием
   systemd.tmpfiles.rules = [
-    "w /sys/firmware/acpi/platform_profile - - - - balanced-performance"
+    "w /sys/firmware/acpi/platform_profile - - - - performance"
   ];
   services.logind.settings.Login = {
     HandleLidSwitch = "ignore";

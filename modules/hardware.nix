@@ -21,7 +21,10 @@
 
   # Intel CPU
   hardware.cpu.intel.updateMicrocode = true;
-  services.thermald.enable = true;
+  services.thermald.enable = false;  # отключён — мешает BIOS управлять вентиляторами (троттлит CPU вместо раскрутки кулеров)
+
+  # Acer Predator PH16-72: без predator_v4 acer_wmi не управляет EC и кулеры не реагируют на нагрузку
+  boot.extraModprobeConfig = "options acer_wmi predator_v4=1";
 
   # Загрузчик — systemd-boot для UEFI
   boot.loader.systemd-boot.enable = true;

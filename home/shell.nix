@@ -5,7 +5,7 @@
   programs.kitty = {
     enable = true;
     settings = {
-      background_opacity     = "0.9";
+      background_opacity     = "1.0";
       foreground             = "#d0d0d0";
       background             = "#1a1a1a";
       font_family            = "FiraCode Nerd Font";

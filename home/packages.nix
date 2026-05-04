@@ -66,6 +66,24 @@ let
     esac
   '';
 
+  wow-status = pkgs.writeShellScriptBin "wow-status" ''
+    if systemctl is-active --quiet azerothcore-world; then
+      echo '{"text":"⚔ WoW","class":"running","tooltip":"AzerothCore: запущен"}'
+    else
+      echo '{"text":"⚔ WoW","class":"stopped","tooltip":"AzerothCore: остановлен"}'
+    fi
+  '';
+
+  wow-toggle = pkgs.writeShellScriptBin "wow-toggle" ''
+    if systemctl is-active --quiet azerothcore-world; then
+      sudo ${pkgs.systemd}/bin/systemctl stop azerothcore-world azerothcore-auth
+      ${pkgs.libnotify}/bin/notify-send -i dialog-error "AzerothCore" "Сервер остановлен"
+    else
+      sudo ${pkgs.systemd}/bin/systemctl start azerothcore-world azerothcore-auth
+      ${pkgs.libnotify}/bin/notify-send -i dialog-information "AzerothCore" "Сервер запущен"
+    fi
+  '';
+
   power-menu = pkgs.writeShellScriptBin "power-menu" ''
     chosen=$(printf "  Lock\n  Logout\n  Suspend\n  Reboot\n  Shutdown" | rofi -dmenu -i -p "Power" -theme-str '
       window { width: 300px; }
@@ -87,6 +105,8 @@ in
     keybinds
     vpn
     power-menu
+    wow-status
+    wow-toggle
   ] ++ (with pkgs; [
     # Node.js
     nodejs
