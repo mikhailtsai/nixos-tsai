@@ -1,7 +1,10 @@
 { config, pkgs, vars, ... }:
 
 {
-  hardware.graphics.enable = true;
+  hardware.graphics = {
+    enable = true;
+    extraPackages = with pkgs; [ nvidia-vaapi-driver ];
+  };
 
   # NVIDIA GPU (RTX 4080 — Ada Lovelace)
   hardware.nvidia = {
@@ -24,7 +27,14 @@
   services.thermald.enable = false;  # отключён — мешает BIOS управлять вентиляторами (троттлит CPU вместо раскрутки кулеров)
 
   # Acer Predator PH16-72: без predator_v4 acer_wmi не управляет EC и кулеры не реагируют на нагрузку
-  boot.extraModprobeConfig = "options acer_wmi predator_v4=1";
+  # NVreg_EnableDIFR=0 — не работает в 595.x (параметр не распознаётся), DIFR всё равно активен
+  # NVreg_DynamicPowerManagement=0 — отключает переход GPU в low-power state при простое дисплея.
+  #   Без этого: DPMS sleep → GSP heartbeat timeout → nvidia-modeset застревает с семафором →
+  #   Hyprland вечно блокируется в ApplyModeSetConfig → заморозка + громкие кулеры.
+  boot.extraModprobeConfig = ''
+    options acer_wmi predator_v4=1
+    options nvidia NVreg_DynamicPowerManagement=0
+  '';
 
   # Загрузчик — systemd-boot для UEFI
   boot.loader.systemd-boot.enable = true;
@@ -40,4 +50,9 @@
 
   # Разрешить непривилегированным процессам слушать на портах ≥ 443 (для NX dev-сервера)
   boot.kernel.sysctl."net.ipv4.ip_unprivileged_port_start" = 443;
+
+  # MTP автомаунт: при подключении Android-устройства запускается user-сервис
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="04e8", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}="mtp-automount.service"
+  '';
 }
