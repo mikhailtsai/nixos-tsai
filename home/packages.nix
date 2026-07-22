@@ -33,7 +33,7 @@ let
     printf "  ''${Y}Shift + Print''${R}          Весь экран          ''${Y}Super + Shift + C''${R}      Пипетка\n"
     printf "  ''${Y}Super + Print''${R}          Swappy              ''${Y}Super + \\ ''${R}             Пароли\n"
     printf "  ''${Y}Alt + Print''${R}            Активное окно       ''${Y}Super + W''${R}              Обои\n"
-    printf "                                              ''${Y}Super + Shift + W''${R}      Вкл/выкл фон\n"
+    printf "  ''${Y}Super + Space''${R}          OCR перевод         ''${Y}Super + Shift + W''${R}      Вкл/выкл фон\n"
     printf "\n"
     printf "''${B}  МЫШЬ                                       ПРОЧЕЕ''${R}\n"
     printf "  ''${Y}Super + ЛКМ''${R}            Перетащить          ''${Y}Alt + Shift''${R}            Раскладка\n"
@@ -74,6 +74,43 @@ let
     fi
   '';
 
+  screen-translate = pkgs.writeShellScriptBin "screen-translate" ''
+    TMP_IMG=$(mktemp /tmp/screen-translate-XXXXXX.png)
+    TMP_TXT=$(mktemp /tmp/screen-translate-XXXXXX)
+    cleanup() { rm -f "$TMP_IMG" "''${TMP_TXT}.txt"; }
+    trap cleanup EXIT
+
+    # Выбрать область и сделать скриншот
+    if ! ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" "$TMP_IMG" 2>/dev/null; then
+      exit 0
+    fi
+
+    # OCR (eng + rus чтобы не путать символы)
+    ${pkgs.tesseract5.override { enableLanguages = ["eng" "rus"]; }}/bin/tesseract \
+      "$TMP_IMG" "$TMP_TXT" -l eng+rus 2>/dev/null
+
+    TEXT=$(sed 's/[[:space:]]*$//' "''${TMP_TXT}.txt" | sed '/^$/d')
+
+    if [ -z "$TEXT" ]; then
+      ${pkgs.libnotify}/bin/notify-send -t 4000 "Переводчик" "Текст не распознан"
+      exit 0
+    fi
+
+    # Перевод на русский
+    TRANSLATION=$(${pkgs.translate-shell}/bin/trans -b :ru "$TEXT" 2>/dev/null)
+
+    if [ -z "$TRANSLATION" ]; then
+      ${pkgs.libnotify}/bin/notify-send -t 4000 "Переводчик" "Ошибка перевода\n$TEXT"
+      exit 0
+    fi
+
+    # Скопировать в буфер и показать в плавающем окне (как шпаргалка)
+    echo "$TRANSLATION" | ${pkgs.wl-clipboard}/bin/wl-copy
+    RESULT_FILE=$(mktemp /tmp/translate-result-XXXXXX)
+    echo "$TRANSLATION" > "$RESULT_FILE"
+    ${pkgs.kitty}/bin/kitty --class cheatsheet sh -c "cat '$RESULT_FILE'; echo; echo '--- любая клавиша чтобы закрыть ---'; read -n1; rm -f '$RESULT_FILE'"
+  '';
+
   wow-toggle = pkgs.writeShellScriptBin "wow-toggle" ''
     if systemctl is-active --quiet azerothcore-world; then
       sudo ${pkgs.systemd}/bin/systemctl stop azerothcore-world azerothcore-auth
@@ -82,6 +119,24 @@ let
       sudo ${pkgs.systemd}/bin/systemctl start azerothcore-world azerothcore-auth
       ${pkgs.libnotify}/bin/notify-send -i dialog-information "AzerothCore" "Сервер запущен"
     fi
+  '';
+
+  # Зашифрованное хранилище: открыть LUKS → yazi в ~/Vault → закрыть при выходе.
+  # Каждый запуск требует LUKS-passphrase; выход из yazi сразу блокирует раздел.
+  vault = pkgs.writeShellScriptBin "vault" ''
+    MNT="$HOME/Vault"
+
+    lock() { sudo /run/current-system/sw/bin/vault-umount; }
+    trap lock EXIT INT TERM
+
+    echo "🔒 Введите пароль от Vault:"
+    if ! sudo /run/current-system/sw/bin/vault-mount; then
+      echo "❌ Не удалось открыть Vault (неверный пароль или нет ФС внутри)."
+      exit 1
+    fi
+
+    echo "🔓 Vault открыт. Закрой yazi — хранилище заблокируется."
+    ${pkgs.yazi}/bin/yazi "$MNT"
   '';
 
   power-menu = pkgs.writeShellScriptBin "power-menu" ''
@@ -107,6 +162,8 @@ in
     power-menu
     wow-status
     wow-toggle
+    screen-translate
+    vault
   ] ++ (with pkgs; [
     # Node.js
     nodejs
@@ -126,6 +183,13 @@ in
 
     # Уведомления
     libnotify
+
+    # Переводчик с экрана (OCR + translate-shell)
+    (tesseract5.override { enableLanguages = ["eng" "rus"]; })
+    translate-shell
+
+    # Документация (mkdocs serve)
+    (python3.withPackages (ps: with ps; [ mkdocs mkdocs-material ]))
 
     # Дополнительные шрифты
     nerd-fonts.symbols-only

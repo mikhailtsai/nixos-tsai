@@ -10,6 +10,7 @@
     ./desktop.nix
     ./calendar.nix
     ./wallpaper.nix
+    ./mtp.nix
   ];
 
   home.username    = vars.username;
@@ -21,7 +22,7 @@
     GDK_DPI_SCALE     = "1.25";
   };
 
-  home.sessionPath = [ "$HOME/.local/bin" ];
+  home.sessionPath = [ "$HOME/.local/bin" "$HOME/.npm-global/bin" ];
 
   programs.home-manager.enable = true;
 
@@ -48,4 +49,12 @@
   };
 
   home.file."Pictures/Screenshots/.keep".text = "";
+
+  # yazi: клавиша V открывает зашифрованный Vault (спросит пароль, заблокирует при выходе)
+  home.file.".config/yazi/keymap.toml".text = ''
+    [[mgr.prepend_keymap]]
+    on   = "V"
+    run  = "shell 'vault' --block"
+    desc = "Открыть зашифрованный Vault"
+  '';
 }

@@ -205,6 +205,25 @@ let
     "carla-jack-single"
     "carla-patchbay"
     "carla-rack"
+    # Синты/плагины — нужны только внутри DAW, standalone не нужен
+    "lsp-plugins"           # лаунчер LSP (сами LV2 скрыты выше)
+    "smjack"                # SpectMorph Jack Client
+    "Odin2"
+    "vital"
+    "yoshimi"
+    "BespokeSynth"
+    "zynaddsubfx-alsa"
+    "zynaddsubfx-jack"
+    "zynaddsubfx-jack-multi"
+    "zynaddsubfx-oss"
+    "org.rncbc.synthv1"
+    "org.rncbc.samplv1"
+    "org.rncbc.padthv1"
+    "org.rncbc.drumkv1"
+    # Не-аудио мусор из меню приложений
+    "uuctl"                 # GUI управления systemd-юнитами (из uwsm), руками не нужен
+    "thunar-settings"       # "Thunar Preferences" — настройки есть внутри Thunar
+    "org.pwmt.zathura"      # PDF-вьювер: скрыт из rofi, но остаётся обработчиком PDF
   ];
 in
 

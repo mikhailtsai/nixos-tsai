@@ -1,36 +1,28 @@
 /*
  * mod-champion-mobs
  *
- * Шанс CHAMPION_CHANCE на спавн превратить подходящего моба в Чемпиона:
- *   - HP/урон/броня масштабируются по тиру (см. константы CHAMPION_*/LEGEND_*)
- *   - Immune to stun / fear / sleep / polymorph / charm / horror / Turn Undead
- *   - Visual auras: fire ring + rune circle + golden body glow
- *   - Creature yells on aggro, chat announce in 80-yard radius on spawn and on aggro
- *   - On kill: bonus XP + generous gold
- *     + бонусный лут по тиру (BoE зелёные/синие/фиолетовые из DB)
- *     stacked ON TOP of the creature's normal loot
+ * CHAMPION_CHANCE% of eligible mobs become Champions on spawn.
+ * HP/damage/armor scale by tier -- see CHAMPION_* / LEGEND_* constants.
  *
- * Тиры чемпионов:
- *   Tier 1 — Обычный   (NORMAL/RARE в открытом мире):  2–4 зелёных/синих
- *   Tier 2 — Элитный   (ELITE/RAREELITE, не босс):     2–4 зелёных/синих + 1–2 epic
- *   Tier 3 — Босс данжа (в instance_encounters, данж): 2–4 зелёных/синих + 6–8 epic
- *   Tier 4 — Босс рейда (в instance_encounters, рейд,
- *                         или WORLDBOSS):               2–4 зелёных/синих + 25–30 epic
+ * Tiers:
+ *   Tier 1 -- Normal   (NORMAL/RARE open world):   2-4 green/blue
+ *   Tier 2 -- Elite    (ELITE/RAREELITE, no boss): 2-4 green/blue + 1-2 epic
+ *   Tier 3 -- Dungeon  (instance_encounters, 5m):  2-4 green/blue + 6-8 epic
+ *   Tier 4 -- Raid     (instance_encounters, raid
+ *                       or WORLDBOSS):             2-4 green/blue + 25-30 epic
  *
- * Легендарные чемпионы (LEGEND_CHANCE от чемпионов, только мобы 40+):
- *   - Те же тиры, усиленные ауры, объявление на 150 ярдов
- *   - Активные способности в бою: прыжок за спину / призыв стаи / топот (стан 3с, 35 ярдов)
- *   - Двойное количество эпиков + шанс на предмет legendary (orange) качества
+ * Legendary champions (LEGEND_CHANCE% of champions, level 40+ only):
+ *   - Same tiers, stronger auras, 150-yard announce
+ *   - Active abilities: blink behind / illusion summon / stomp (3s stun)
+ *   - Double epics + chance for legendary (orange) quality item
  *
- * Боссы определяются через instance_encounters.creditEntry (creditType=0) —
- * та же таблица, по которой LFG показывает "X из Y боссов убито".
+ * Bosses identified via instance_encounters.creditEntry (creditType=0).
  *
  * Eligibility filter:
- *   - Skips pets, summons, totems
- *   - Skips Alliance/Horde faction NPCs (guards, vendors, quest givers)
- *   - Skips non-attackable units
+ *   - Skips pets, summons, totems, non-attackable units
+ *   - Skips Alliance/Horde faction NPCs
  *   - Only beast, dragonkin, demon, elemental, giant, undead, humanoid, mechanical
- *   - Level >= 2
+ *   - Level >= 15 (legendary: level >= 40)
  */
 
 #include "ScriptMgr.h"
@@ -290,8 +282,15 @@ struct ChampionData
     std::vector<ObjectGuid> minionGuids;
 };
 
-static std::mutex                               s_mutex;
-static std::unordered_map<uint64, ChampionData> s_champions;
+static std::mutex                                    s_mutex;
+static std::unordered_map<uintptr_t, ChampionData>   s_champions;
+
+// Ключ — адрес объекта Creature в памяти (уникален для каждого живого существа).
+// Это решает проблему коллизии GUID между разными инстансами одного и того же подземелья:
+// AzerothCore генерирует GUID на основе spawnId, который одинаков во всех инстансах BRD,
+// поэтому два разных инстанса BRD могут иметь мобов с идентичными GUID.
+// Указатель на объект — всегда уникален для конкретного живого Creature.
+static inline uintptr_t ChampionKey(Creature const* c) { return reinterpret_cast<uintptr_t>(c); }
 
 static void MarkChampion(Creature const* c,
                          uint32 targetHp, uint32 origHp,
@@ -299,7 +298,7 @@ static void MarkChampion(Creature const* c,
                          int32 origArmor, float origScale)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
-    s_champions[c->GetGUID().GetRawValue()] = {
+    s_champions[ChampionKey(c)] = {
         targetHp, origHp, origMinDmg, origMaxDmg, origArmor, origScale,
         /*yelled=*/false,
         /*legendary=*/false
@@ -311,7 +310,7 @@ static void MarkChampion(Creature const* c,
 static void SetLegendary(Creature const* c, uint32 newTargetHp)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
-    auto it = s_champions.find(c->GetGUID().GetRawValue());
+    auto it = s_champions.find(ChampionKey(c));
     if (it == s_champions.end())
         return;
     auto& d = it->second;
@@ -324,13 +323,13 @@ static void SetLegendary(Creature const* c, uint32 newTargetHp)
 static bool IsChampion(Creature const* c)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
-    return s_champions.count(c->GetGUID().GetRawValue()) > 0;
+    return s_champions.count(ChampionKey(c)) > 0;
 }
 
 static bool IsLegendaryChampion(Creature const* c)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
-    auto it = s_champions.find(c->GetGUID().GetRawValue());
+    auto it = s_champions.find(ChampionKey(c));
     return it != s_champions.end() && it->second.legendary;
 }
 
@@ -339,7 +338,7 @@ struct ChampionState { uint32 targetMaxHp = 0; float targetScale = 0.f; bool leg
 static ChampionState GetChampionState(Creature const* c)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
-    auto it = s_champions.find(c->GetGUID().GetRawValue());
+    auto it = s_champions.find(ChampionKey(c));
     if (it == s_champions.end())
         return {};
     auto const& d = it->second;
@@ -350,13 +349,13 @@ static ChampionState GetChampionState(Creature const* c)
 static void UnmarkChampion(Creature const* c)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
-    s_champions.erase(c->GetGUID().GetRawValue());
+    s_champions.erase(ChampionKey(c));
 }
 
 static void RegisterMinion(Creature const* champion, Creature const* minion)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
-    auto it = s_champions.find(champion->GetGUID().GetRawValue());
+    auto it = s_champions.find(ChampionKey(champion));
     if (it != s_champions.end())
         it->second.minionGuids.push_back(minion->GetGUID());
 }
@@ -368,7 +367,7 @@ static void SyncMinionTargets(Creature* champion, Unit* victim)
     std::vector<ObjectGuid> guids;
     {
         std::lock_guard<std::mutex> lk(s_mutex);
-        auto it = s_champions.find(champion->GetGUID().GetRawValue());
+        auto it = s_champions.find(ChampionKey(champion));
         if (it == s_champions.end() || it->second.minionGuids.empty())
             return;
         guids = it->second.minionGuids;
@@ -393,7 +392,7 @@ static void DespawnMinions(Creature* champion)
     std::vector<ObjectGuid> guids;
     {
         std::lock_guard<std::mutex> lk(s_mutex);
-        auto it = s_champions.find(champion->GetGUID().GetRawValue());
+        auto it = s_champions.find(ChampionKey(champion));
         if (it == s_champions.end())
             return;
         guids = std::move(it->second.minionGuids);
@@ -458,7 +457,7 @@ static void RevertChampion(Creature* c)
     ChampionData data;
     {
         std::lock_guard<std::mutex> lk(s_mutex);
-        auto it = s_champions.find(c->GetGUID().GetRawValue());
+        auto it = s_champions.find(ChampionKey(c));
         if (it == s_champions.end())
             return;
         data = it->second;
@@ -501,7 +500,7 @@ static void RevertChampion(Creature* c)
 static void SetAggroSoundTimer(Creature const* c, uint32 ms)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
-    auto it = s_champions.find(c->GetGUID().GetRawValue());
+    auto it = s_champions.find(ChampionKey(c));
     if (it != s_champions.end())
         it->second.aggroSoundTimer = ms;
 }
@@ -510,7 +509,7 @@ static void SetAggroSoundTimer(Creature const* c, uint32 ms)
 static void ResetYell(Creature const* c)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
-    auto it = s_champions.find(c->GetGUID().GetRawValue());
+    auto it = s_champions.find(ChampionKey(c));
     if (it != s_champions.end())
     {
         it->second.yelled = false;
@@ -522,7 +521,7 @@ static void ResetYell(Creature const* c)
 static bool TryMarkYelled(Creature const* c)
 {
     std::lock_guard<std::mutex> lk(s_mutex);
-    auto it = s_champions.find(c->GetGUID().GetRawValue());
+    auto it = s_champions.find(ChampionKey(c));
     if (it == s_champions.end() || it->second.yelled)
         return false;
     it->second.yelled = true;
@@ -629,7 +628,7 @@ static LegendaryAbilityResult TickLegendaryAbilities(Creature const* c, uint32 d
     LegendaryAbilityResult result;
     std::lock_guard<std::mutex> lk(s_mutex);
 
-    auto it = s_champions.find(c->GetGUID().GetRawValue());
+    auto it = s_champions.find(ChampionKey(c));
     if (it == s_champions.end() || !it->second.legendary)
         return result;
 
@@ -698,18 +697,19 @@ static void DoSummonIllusions(Creature* c)
         if (!illusion)
             continue;
 
-        // NOT_SELECTABLE    — нельзя кликнуть/таргетировать мышью или спеллом
-        // IMMUNE_TO_PC/NPC  — иммун к любому урону и АоЕ (и от игроков, и от ботов/мобов)
-        // БЕЗ NON_ATTACKABLE — иллюзии сами могут входить в бой и атаковать
+        // NOT_SELECTABLE — нельзя кликнуть/таргетировать мышью или табом
+        // NON_ATTACKABLE  — IsValidAttackTarget() вернёт false когда иллюзия является целью:
+        //                   блокирует как прямой таргет, так и АоЕ-хиты.
+        //                   НЕ влияет на атаки самой иллюзии — она остаётся полноценным атакующим.
+        // IMMUNE_TO_PC/NPC убраны: они блокируют Unit::Attack() изнутри, не давая иллюзии атаковать.
         illusion->SetFlag(UNIT_FIELD_FLAGS,
             UNIT_FLAG_NOT_SELECTABLE |
-            UNIT_FLAG_IMMUNE_TO_PC   |
-            UNIT_FLAG_IMMUNE_TO_NPC);
+            UNIT_FLAG_NON_ATTACKABLE);
         illusion->SetReactState(REACT_AGGRESSIVE);
         // 0.75 от базового размера (до множителя чемпиона/легендарного)
         {
             std::lock_guard<std::mutex> lk(s_mutex);
-            auto it = s_champions.find(c->GetGUID().GetRawValue());
+            auto it = s_champions.find(ChampionKey(c));
             float baseScale = (it != s_champions.end()) ? it->second.origScale : 1.0f;
             illusion->SetObjectScale(baseScale * 0.75f);
         }
@@ -973,14 +973,30 @@ public:
     // -----------------------------------------------------------------
     void OnCreatureRemoveWorld(Creature* c) override
     {
-        if (IsChampion(c))
+        if (!IsChampion(c))
+            return;
+
+        DespawnMinions(c);
+
+        if (c->IsAlive())
         {
+            // Чемпион удаляется из мира живым (ресет инстанса, скриптовый деспаун, etc.)
+            // Откатываем статы (особенно SetCreateHealth!) — иначе при Respawn() моб
+            // подберёт увеличенный HP и будет выглядеть чемпионом, не будучи в s_champions.
             LOG_WARN("module",
-                "mod-champion-mobs: [REMOVE] {} (entry={} guid={:#x}) removed while ALIVE",
+                "mod-champion-mobs: [REMOVE] {} (entry={} guid={:#x}) removed while ALIVE — reverting stats",
                 c->GetName(), c->GetEntry(), c->GetGUID().GetRawValue());
-            DespawnMinions(c);
+            RevertChampion(c); // сбрасывает статы и убирает из s_champions
         }
-        UnmarkChampion(c);
+        else
+        {
+            // Мёртвый чемпион (труп убирается) — OnUnitDeath должен был уже сделать UnmarkChampion.
+            // Это fallback на случай если OnUnitDeath не сработал.
+            LOG_WARN("module",
+                "mod-champion-mobs: [REMOVE] {} (entry={} guid={:#x}) dead corpse cleanup (OnUnitDeath missed?)",
+                c->GetName(), c->GetEntry(), c->GetGUID().GetRawValue());
+            UnmarkChampion(c);
+        }
     }
 
     // -----------------------------------------------------------------
@@ -1026,7 +1042,7 @@ public:
             bool playStinger = false;
             {
                 std::lock_guard<std::mutex> lk(s_mutex);
-                auto it = s_champions.find(c->GetGUID().GetRawValue());
+                auto it = s_champions.find(ChampionKey(c));
                 if (it != s_champions.end() && it->second.aggroSoundTimer > 0)
                 {
                     if (it->second.aggroSoundTimer <= diff)
@@ -1055,24 +1071,37 @@ public:
     }
 };
 
-// ── PlayerScript — уведомление при агро ──────────────────────────────────────
+// (ChampionPlayer удалён — агро-логика перенесена в ChampionUnit::OnUnitEnterCombat)
 
-class ChampionPlayer : public PlayerScript
+// ── UnitScript — агро + смерть + выдача лута ─────────────────────────────────
+
+class ChampionUnit : public UnitScript
 {
 public:
-    ChampionPlayer() : PlayerScript("champion_player") {}
+    ChampionUnit() : UnitScript("champion_unit") {}
 
-    void OnPlayerEnterCombat(Player* player, Unit* enemy) override
+    // ── Агро-уведомление (вместо OnPlayerEnterCombat) ────────────────
+    // OnUnitEnterCombat срабатывает из Creature::AtEngage() — всегда именно
+    // для чемпиона, независимо от того, был ли игрок уже в бою с другими мобами.
+    // OnPlayerEnterCombat срабатывал с GetAnyTarget() — случайным мобом из пула,
+    // что в большом пуле (БРД и т.п.) приводило к пропуску уведомления.
+    void OnUnitEnterCombat(Unit* unit, Unit* victim) override
     {
-        Creature* c = enemy->ToCreature();
+        Creature* c = unit->ToCreature();
         if (!c || !IsChampion(c))
             return;
 
-        // Соло-бот без живых игроков в группе → откатить чемпиона
-        if (sRandomPlayerbotMgr.IsRandomBot(player->GetGUID().GetCounter()) && !player->GetGroup())
+        // Соло-бот без группы → откатить чемпиона
+        if (victim)
         {
-            RevertChampion(c);
-            return;
+            Player* aggressor = victim->GetCharmerOrOwnerPlayerOrPlayerItself();
+            if (aggressor
+                && sRandomPlayerbotMgr.IsRandomBot(aggressor->GetGUID().GetCounter())
+                && !aggressor->GetGroup())
+            {
+                RevertChampion(c);
+                return;
+            }
         }
 
         bool isLegendary = IsLegendaryChampion(c);
@@ -1088,7 +1117,7 @@ public:
                 "Your bones will decorate this place!",
                 "Champions are not born \xe2\x80\x94 they are forged in your defeat!",
             };
-            c->Yell(yells[urand(0u, 4u)], LANG_UNIVERSAL, player);
+            c->Yell(yells[urand(0u, 4u)], LANG_UNIVERSAL);
 
             if (isLegendary)
             {
@@ -1114,9 +1143,8 @@ public:
             }
         }
 
-        // ── HUD-сообщение для игрока ──────────────────────────────────
-        float hudHpMult;
-        float hudDmgMult;
+        // ── HUD-сообщение всем ближайшим живым игрокам ───────────────
+        float hudHpMult, hudDmgMult;
         if (isLegendary)
         {
             switch (tier)
@@ -1138,7 +1166,6 @@ public:
             }
         }
 
-        // Форматируем число: убираем ".0" если целое
         auto fmtMult = [](float v) -> std::string {
             if (v == std::floor(v))
                 return std::to_string(int(v));
@@ -1151,9 +1178,9 @@ public:
         switch (tier)
         {
             case CHAMPION_TIER_ELITE:
-                rewardLine += " |cffA335EE+ 1\xe2\x80\x932 epic|r";               break;
+                rewardLine += " |cffA335EE+ 1\xe2\x80\x932 epic|r";                break;
             case CHAMPION_TIER_DUNGEON_BOSS:
-                rewardLine += " |cffA335EE+ 6\xe2\x80\x938 epic (BOSS!)|r";       break;
+                rewardLine += " |cffA335EE+ 6\xe2\x80\x938 epic (BOSS!)|r";        break;
             case CHAMPION_TIER_RAID_BOSS:
                 rewardLine += " |cffA335EE+ 25\xe2\x80\x9330 epic (RAID BOSS!)|r"; break;
             default: break;
@@ -1177,17 +1204,19 @@ public:
             "|r (lvl " + std::to_string(c->GetLevel()) + ")\n" +
             dangerLine + "\n" + rewardLine;
 
-        ChatHandler(player->GetSession()).SendSysMessage(hud.c_str());
+        Map::PlayerList const& plist = c->GetMap()->GetPlayers();
+        for (auto it = plist.begin(); it != plist.end(); ++it)
+        {
+            Player* p = it->GetSource();
+            if (!p || p->GetDistance(c) >= 100.0f)
+                continue;
+            if (sRandomPlayerbotMgr.IsRandomBot(p->GetGUID().GetCounter()))
+                continue;
+            ChatHandler(p->GetSession()).SendSysMessage(hud.c_str());
+        }
     }
-};
 
-// ── UnitScript — смерть и выдача лута ────────────────────────────────────────
-
-class ChampionUnit : public UnitScript
-{
-public:
-    ChampionUnit() : UnitScript("champion_unit") {}
-
+    // ── Смерть и выдача лута ──────────────────────────────────────────
     void OnUnitDeath(Unit* unit, Unit* killer) override
     {
         Creature* c = unit->ToCreature();
@@ -1204,6 +1233,12 @@ public:
         UnmarkChampion(c);
         BuildChampionLoot(c, isLegendary);
 
+        // UNIT_DYNFLAG_LOOTABLE выставляется ядром ДО нашего хука, по состоянию лута
+        // до BuildChampionLoot. Если у моба не было обычного лута (пустая таблица,
+        // нет золота) — флаг не был выставлен. Гарантируем его наличие явно.
+        if (!c->HasDynamicFlag(UNIT_DYNFLAG_LOOTABLE) && !c->loot.isLooted())
+            c->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+
         LOG_WARN("module",
             "mod-champion-mobs: [SLAIN] {}{} (guid={:#x} lvl={}) — killer type={} responsible={}",
             isLegendary ? "LEGENDARY " : "",
@@ -1215,7 +1250,6 @@ public:
             return;
 
         // Бонусный XP + сообщение о победе — игроку и его группе
-        // Легендарные чемпионы дают в 2 раза больше опыта
         ChampionTier xpTier = GetChampionTier(c);
         uint32 xpMult;
         switch (xpTier)
@@ -1256,6 +1290,5 @@ void Addmod_champion_mobsScripts()
 {
     new ChampionWorld();
     new ChampionAllCreature();
-    new ChampionPlayer();
     new ChampionUnit();
 }

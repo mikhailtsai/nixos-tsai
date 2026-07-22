@@ -10,6 +10,9 @@
     ./modules/services.nix
     ./modules/gaming.nix
     ./modules/packages.nix
+    ./modules/storage.nix  # ~/Storage (открытый) + ~/Vault (LUKS по требованию)
+    ./modules/penpot.nix   # Penpot (self-hosted Figma) на https://penpot.tsai + MCP
+    ./modules/home-dashboard.nix  # Веб-панель управления сервисами на https://home.tsai
     ./modules/azerothcore  # WoW WotLK 3.3.5a private server (выключен пока enable = false)
   ];
 
@@ -19,7 +22,44 @@
   };
 
   nixpkgs.config.allowUnfree = true;
+  nixpkgs.config.permittedInsecurePackages = [
+    "electron-39.8.10" # bitwarden-desktop пока не обновился до нового electron
+  ];
   programs.ssh.startAgent = true;
+
+  # nix-ld: настоящий glibc-загрузчик по /lib64/ld-linux-x86-64.so.2,
+  # чтобы скачанные готовые бинарники запускались (JetBrains AI Assistant
+  # тянет свой codex-acp — динамически слинкованный с glibc).
+  programs.nix-ld.enable = true;
+  # System libraries for the browsers Playwright downloads (e2e tests).
+  # Playwright browsers are plain FHS binaries; nix-ld feeds them these .so
+  # via NIX_LD_LIBRARY_PATH. Covers chromium + firefox (webkit needs more).
+  programs.nix-ld.libraries = with pkgs; [
+    # --- Chromium ---
+    glib nss nspr atk at-spi2-atk at-spi2-core cups dbus expat
+    libdrm libgbm mesa libGL libglvnd libxkbcommon
+    cairo pango alsa-lib fontconfig freetype
+    xorg.libX11 xorg.libxcb xorg.libXcomposite xorg.libXdamage
+    xorg.libXext xorg.libXfixes xorg.libXrandr xorg.libXcursor
+    xorg.libXi xorg.libXtst xorg.libXScrnSaver
+    # --- Firefox ---
+    gtk3 gdk-pixbuf xorg.libXt
+    # --- WebKit ---
+    harfbuzz icu libwebp enchant libsecret libsoup_3
+    gst_all_1.gstreamer gst_all_1.gst-plugins-base
+  ];
+  # Playwright's validator looks up .so via ldd in standard paths and misses
+  # the nix-ld libraries (they arrive through NIX_LD_LIBRARY_PATH). The loader
+  # resolves them at runtime, so we disable the host-requirements check
+  # globally — keeps NixOS-specifics out of the project repo itself.
+  environment.variables.PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "1";
+
+  # Prisma 7 не имеет прекомпилированных движков для таргета `linux-nixos`
+  # (`prisma generate`/`migrate` падает с 404 на binaries.prisma.sh). В 7-ке
+  # остался только schema-engine — берём его из nixpkgs и отдаём Prisma через
+  # env. sessionVariables — чтобы подхватывали и терминал, и WebStorm из Hypr.
+  environment.sessionVariables.PRISMA_SCHEMA_ENGINE_BINARY =
+    "${pkgs.prisma-engines}/bin/schema-engine";
 
   time.timeZone = vars.timezone;
 

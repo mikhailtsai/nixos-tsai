@@ -16,6 +16,10 @@
       enable_audio_bell      = false;
       window_padding_width   = 8;
       confirm_os_window_close = 0;
+      # Отключаем авто-reload конфига: на NixOS kitty.conf резолвится в /nix/store,
+      # и вотчер (__watch_conf__) рекурсивно вешает inotify на весь стор (~524k watches),
+      # выжирая fs.inotify.max_user_watches. Перечитать конфиг вручную: ctrl+shift+f5.
+      auto_reload_config     = "-1";
     };
   };
 

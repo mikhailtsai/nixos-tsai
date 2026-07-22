@@ -4,14 +4,8 @@ let
   smart-wallpaper = pkgs.writeShellScriptBin "smart-wallpaper" ''
     IMG=$(${pkgs.findutils}/bin/find /etc/nixos/wallpapers -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" -o -name "*.webp" \) | ${pkgs.coreutils}/bin/shuf -n 1)
     [ -z "$IMG" ] && exit 1
-    eval $(${pkgs.imagemagick}/bin/identify -format 'W=%w H=%h' "$IMG")
-    SCREEN_W=$(hyprctl monitors -j | ${pkgs.jq}/bin/jq '.[0].width')
-    if [ "$W" -ge "$SCREEN_W" ]; then
-      RESIZE=crop
-    else
-      RESIZE=fit
-    fi
-    awww img --resize "$RESIZE" --fill-color 000000ff --transition-type grow --transition-pos center "$IMG"
+    # crop всегда заполняет весь экран (масштабирует и обрезает лишнее) — без полос по бокам
+    awww img --resize crop --fill-color 000000ff --transition-type grow --transition-pos center "$IMG"
   '';
 
   toggle-wallpaper = pkgs.writeShellScriptBin "toggle-wallpaper" ''

@@ -44,8 +44,10 @@
   boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ];
   boot.kernelParams = [
     "nvidia-drm.modeset=1"
-    "nvidia-drm.fbdev=1"
-    "fbcon=map:1"              # prefer NVIDIA framebuffer for console
+    # nvidia-drm.fbdev=1 + fbcon=map:1 убраны: nvidia-drm владел fbcon-консолью и
+    # держал CRTC, из-за чего при переключении на Wayland-композитор (cage/Hyprland на vt1)
+    # modeset-handoff зависал — экран оставался с прошлым кадром, GUI не появлялся.
+    # Только modeset=1 нужен для Wayland; консоль теперь через simpledrm (внутр. панель).
   ];
 
   # Разрешить непривилегированным процессам слушать на портах ≥ 443 (для NX dev-сервера)

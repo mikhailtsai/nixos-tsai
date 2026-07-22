@@ -1,0 +1,499 @@
+<div class="grain" aria-hidden="true"></div>
+<div class="glow" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">◈</span>
+    <div class="brand-text">
+      <span class="brand-name">home.tsai</span>
+      <span class="brand-sub">Домашние сервисы</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="health" id="health"><span class="health-dot" id="healthDot"></span><span id="healthText">проверка…</span></span>
+    <span class="clock" id="clock">--:--</span>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab active" role="tab" data-tab="wow" aria-selected="true">
+    <span class="tab-glyph">⚔</span> WoW server
+    <span class="tab-dot" id="tabDotWow"></span>
+  </button>
+  <button class="tab" role="tab" data-tab="penpot" aria-selected="false">
+    <span class="tab-glyph">◈</span> Penpot
+    <span class="tab-dot" id="tabDotPenpot"></span>
+  </button>
+</nav>
+
+<main>
+  <!-- ── WoW ─────────────────────────────────────────────────────────── -->
+  <section class="panel active" id="panel-wow" role="tabpanel">
+    <div class="hero">
+      <div class="hero-status">
+        <span class="status-dot" id="wowDot"></span>
+        <div>
+          <div class="status-label" id="wowState">—</div>
+          <div class="status-desc" id="wowDesc">AzerothCore · WotLK 3.3.5a</div>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <span class="metric-key">Uptime</span>
+          <span class="metric-val" id="wowUptime">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-key">Память</span>
+          <span class="metric-val" id="wowMem">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-key">Auth-сервер</span>
+          <span class="metric-val" id="wowAuth">—</span>
+        </div>
+      </div>
+    </div>
+    <div class="actions" id="wowActions">
+      <button class="btn btn-primary" data-action="wow-start">Запустить</button>
+      <button class="btn" data-action="wow-restart" data-confirm="Перезапустить WoW-сервер? Игроки будут отключены.">Перезапустить</button>
+      <button class="btn btn-danger" data-action="wow-stop" data-confirm="Остановить WoW-сервер? Игроки будут отключены.">Остановить</button>
+    </div>
+  </section>
+
+  <!-- ── Penpot ──────────────────────────────────────────────────────── -->
+  <section class="panel" id="panel-penpot" role="tabpanel" hidden>
+    <div class="hero">
+      <div class="hero-status">
+        <span class="status-dot" id="penpotDot"></span>
+        <div>
+          <div class="status-label" id="penpotState">—</div>
+          <div class="status-desc">Self-hosted дизайн-сервер · <span id="penpotCount">—</span></div>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <span class="metric-key">Контейнеры</span>
+          <span class="metric-val" id="penpotUp">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-key">Адрес</span>
+          <a class="metric-val metric-link" href="https://penpot.tsai" target="_blank" rel="noopener">penpot.tsai&nbsp;↗</a>
+        </div>
+      </div>
+      <div class="chips" id="penpotChips"></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" data-action="penpot-start">Запустить</button>
+      <button class="btn" data-action="penpot-restart" data-confirm="Перезапустить все контейнеры Penpot?">Перезапустить</button>
+      <button class="btn btn-danger" data-action="penpot-stop" data-confirm="Остановить Penpot?">Остановить</button>
+    </div>
+  </section>
+</main>
+
+<div class="toast-wrap" id="toasts" aria-live="polite"></div>
+
+<style>
+  :root {
+    --bg: #0A0A0B; --bg-sunken: #060607;
+    --surface-1: #141416; --surface-2: #1C1C20; --surface-3: #26262B;
+    --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.16);
+    --border-subtle: rgba(255,255,255,0.06); --highlight-top: rgba(255,255,255,0.08);
+    --text: rgba(255,255,255,0.92); --text-2: rgba(255,255,255,0.60);
+    --text-3: rgba(255,255,255,0.40); --text-disabled: rgba(255,255,255,0.26);
+    --accent: #7C5CFF; --accent-hover: #8E72FF; --accent-press: #6A48E6;
+    --accent-quiet: rgba(124,92,255,0.14); --accent-glow: rgba(124,92,255,0.35);
+    --success: #30A46C; --success-quiet: rgba(48,164,108,0.14);
+    --warning: #E2A336; --warning-quiet: rgba(226,163,54,0.14);
+    --danger: #E5484D; --danger-quiet: rgba(229,72,77,0.14);
+    --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-full: 9999px;
+    --font-sans: "Geist","Inter","SF Pro Display",system-ui,-apple-system,sans-serif;
+    --font-mono: "Geist Mono","JetBrains Mono","SF Mono",ui-monospace,monospace;
+    --elev-2: 0 4px 16px rgba(0,0,0,0.40);
+    --elev-3: 0 12px 40px rgba(0,0,0,0.50);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; min-height: 100vh;
+    font-family: var(--font-sans);
+    color: var(--text);
+    background-color: var(--bg);
+    background-image: radial-gradient(120% 90% at 50% -10%, #16131F 0%, var(--bg) 55%);
+    font-feature-settings: "cv01","ss01";
+    -webkit-font-smoothing: antialiased;
+    padding: clamp(16px, 4vw, 40px);
+    max-width: 860px; margin: 0 auto;
+  }
+
+  /* ── ambient effects ── */
+  .grain {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    opacity: 0.035; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .glow {
+    position: fixed; top: -160px; left: 50%; transform: translateX(-50%);
+    width: 520px; height: 420px; z-index: 0; pointer-events: none;
+    background: var(--accent-glow); filter: blur(140px); opacity: 0.42;
+    border-radius: var(--r-full);
+  }
+  main, header, nav, .toast-wrap { position: relative; z-index: 1; }
+
+  /* ── topbar ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 28px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    display: grid; place-items: center; width: 40px; height: 40px;
+    border-radius: var(--r-md); background: var(--surface-2);
+    border: 1px solid var(--border);
+    box-shadow: inset 0 1px 0 var(--highlight-top);
+    color: var(--accent); font-size: 18px;
+  }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+  .brand-name {
+    font-family: var(--font-mono); font-size: 15px; font-weight: 500;
+    letter-spacing: -0.01em; color: var(--text);
+  }
+  .brand-sub { font-size: 12px; color: var(--text-3); letter-spacing: 0.01em; }
+
+  .topbar-right { display: flex; align-items: center; gap: 14px; }
+  .health {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; color: var(--text-2);
+    padding: 6px 11px; border-radius: var(--r-full);
+    background: var(--surface-1); border: 1px solid var(--border-subtle);
+  }
+  .health-dot {
+    width: 7px; height: 7px; border-radius: var(--r-full);
+    background: var(--text-3); flex: none;
+  }
+  .clock {
+    font-family: var(--font-mono); font-size: 13px; color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── tabs (segmented control) ── */
+  .tabs {
+    display: inline-flex; gap: 4px; padding: 4px;
+    background: var(--surface-1); border: 1px solid var(--border-subtle);
+    border-radius: var(--r-md); margin-bottom: 20px;
+  }
+  .tab {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: inherit; font-size: 14px; font-weight: 500; color: var(--text-2);
+    background: transparent; border: 0; cursor: pointer;
+    padding: 9px 16px; border-radius: var(--r-sm);
+    transition: color 160ms, background 160ms;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--text); background: var(--surface-3);
+    box-shadow: inset 0 1px 0 var(--highlight-top);
+  }
+  .tab-glyph { font-size: 15px; opacity: 0.9; }
+  .tab-dot {
+    width: 7px; height: 7px; border-radius: var(--r-full);
+    background: var(--text-disabled); flex: none;
+  }
+
+  /* ── panel / card ── */
+  .panel { display: none; }
+  .panel.active { display: block; animation: rise 240ms cubic-bezier(0.2,0.8,0.2,1); }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .hero {
+    background: linear-gradient(180deg, var(--surface-1), var(--bg-sunken));
+    border: 1px solid var(--border); border-radius: var(--r-lg);
+    box-shadow: var(--elev-2), inset 0 1px 0 var(--highlight-top);
+    padding: clamp(20px, 4vw, 32px);
+  }
+  .hero-status { display: flex; align-items: center; gap: 18px; }
+  .status-dot {
+    width: 14px; height: 14px; border-radius: var(--r-full); flex: none;
+    background: var(--text-disabled);
+    box-shadow: 0 0 0 0 rgba(0,0,0,0);
+  }
+  .status-dot.on {
+    background: var(--success);
+    box-shadow: 0 0 16px 1px var(--success-quiet);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  .status-dot.warn { background: var(--warning); box-shadow: 0 0 16px 1px var(--warning-quiet); }
+  .status-dot.off { background: var(--text-disabled); }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(48,164,108,0.45); }
+    50% { box-shadow: 0 0 0 7px rgba(48,164,108,0); }
+  }
+  .status-label {
+    font-size: 26px; font-weight: 600; letter-spacing: -0.02em;
+    line-height: 1.15; text-wrap: balance;
+  }
+  .status-desc { font-size: 13px; color: var(--text-3); margin-top: 3px; }
+
+  .metrics {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1px; margin-top: 26px;
+    background: var(--border-subtle); border: 1px solid var(--border-subtle);
+    border-radius: var(--r-md); overflow: hidden;
+  }
+  .metric {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 14px 16px; background: var(--surface-1);
+  }
+  .metric-key {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-3); font-weight: 500;
+  }
+  .metric-val {
+    font-family: var(--font-mono); font-size: 17px; font-weight: 450;
+    color: var(--text); font-variant-numeric: tabular-nums;
+  }
+  .metric-link {
+    color: var(--accent-hover); text-decoration: none; font-size: 15px;
+    transition: color 140ms;
+  }
+  .metric-link:hover { color: var(--accent); }
+  .metric-link:focus-visible { outline: none; text-decoration: underline; }
+
+  /* ── penpot container chips ── */
+  .chips {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono); font-size: 12px; color: var(--text-2);
+    padding: 6px 11px; border-radius: var(--r-full);
+    background: var(--surface-2); border: 1px solid var(--border-subtle);
+  }
+  .chip-dot {
+    width: 6px; height: 6px; border-radius: var(--r-full);
+    background: var(--text-disabled); flex: none;
+  }
+  .chip-dot.on { background: var(--success); }
+  .chip-dot.off { background: var(--danger); }
+
+  /* ── actions ── */
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .btn {
+    font-family: inherit; font-size: 14px; font-weight: 550; letter-spacing: -0.01em;
+    color: var(--text); cursor: pointer;
+    padding: 11px 20px; border-radius: var(--r-sm);
+    background: var(--surface-2); border: 1px solid var(--border);
+    box-shadow: inset 0 1px 0 var(--highlight-top);
+    transition: transform 140ms cubic-bezier(0.2,0.8,0.2,1), border-color 140ms, background 140ms, opacity 140ms;
+  }
+  .btn:hover { transform: translateY(-1px); border-color: var(--border-strong); background: var(--surface-3); }
+  .btn:active { transform: translateY(0); }
+  .btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+  .btn-primary {
+    background: linear-gradient(180deg, var(--accent-hover), var(--accent-press));
+    border-color: transparent; color: #fff;
+  }
+  .btn-primary:hover { background: linear-gradient(180deg, #9a80ff, var(--accent)); border-color: transparent; }
+  .btn-danger { color: #ff9ea0; }
+  .btn-danger:hover { border-color: var(--danger); background: var(--danger-quiet); color: #ffb3b5; }
+  .btn[disabled] { opacity: 0.5; pointer-events: none; }
+  .btn.busy { position: relative; color: transparent; }
+  .btn.busy::after {
+    content: ""; position: absolute; inset: 0; margin: auto;
+    width: 15px; height: 15px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── toasts ── */
+  .toast-wrap {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: 8px; z-index: 10; width: min(92vw, 420px);
+  }
+  .toast {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; border-radius: var(--r-md);
+    background: rgba(28,28,32,0.72); backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+    border: 1px solid var(--border); font-size: 13px; color: var(--text);
+    box-shadow: var(--elev-3), inset 0 1px 0 var(--highlight-top);
+    animation: toastin 240ms cubic-bezier(0.2,0.8,0.2,1);
+  }
+  .toast::before { content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .toast.ok::before { background: var(--success); }
+  .toast.err::before { background: var(--danger); }
+  @keyframes toastin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 480px) {
+    .brand-sub { display: none; }
+    .status-label { font-size: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+
+<script>
+  (function () {
+    var live = null;        // текущее состояние + время получения (для тикающего uptime)
+    var boostUntil = 0;     // до этого момента опрашиваем чаще (2с вместо 3с)
+
+    function boost() { boostUntil = Date.now() + 120000; }  // ускорить поллинг на 2 мин
+
+    function fmtUptime(sec) {
+      if (sec == null) return "—";
+      var d = Math.floor(sec / 86400);
+      var h = Math.floor((sec % 86400) / 3600);
+      var m = Math.floor((sec % 3600) / 60);
+      var s = Math.floor(sec % 60);
+      if (d > 0) return d + "д " + h + "ч " + m + "м";
+      var p = function (n) { return (n < 10 ? "0" : "") + n; };
+      return p(h) + ":" + p(m) + ":" + p(s);
+    }
+
+    function setDot(el, cls) {
+      el.className = el.className.replace(/\b(on|off|warn)\b/g, "").trim() + " " + cls;
+    }
+
+    function render(d) {
+      // WoW — учитываем переходные состояния (worldserver стартует долго)
+      var w = d.wow;
+      var st = w.astate, label, dot, busy = (st === "activating" || st === "deactivating");
+      if (st === "active")            { label = "Запущен";          dot = "on"; }
+      else if (st === "activating")   { label = "Запускается…";     dot = "warn"; }
+      else if (st === "deactivating") { label = "Останавливается…"; dot = "warn"; }
+      else if (st === "failed")       { label = "Ошибка запуска";   dot = "off"; }
+      else                            { label = "Остановлен";       dot = "off"; }
+      document.getElementById("wowState").textContent = label;
+      setDot(document.getElementById("wowDot"), dot);
+      setDot(document.getElementById("tabDotWow"), dot);
+      document.getElementById("wowMem").textContent = w.mem_mb ? w.mem_mb + " МБ" : "—";
+      document.getElementById("wowAuth").textContent = w.auth ? "онлайн" : "офлайн";
+      // во время запуска/остановки показываем стоп/перезапуск (старт прячем)
+      toggleActions("wowActions", st === "active" || busy);
+      if (busy) boost();
+
+      // Penpot
+      var p = d.penpot;
+      var all = p.up === p.total, none = p.up === 0;
+      document.getElementById("penpotState").textContent =
+        all ? "Запущен" : none ? "Остановлен" : "Частично";
+      setDot(document.getElementById("penpotDot"), all ? "on" : none ? "off" : "warn");
+      setDot(document.getElementById("tabDotPenpot"), all ? "on" : none ? "off" : "warn");
+      document.getElementById("penpotUp").textContent = p.up + " / " + p.total;
+      document.getElementById("penpotCount").textContent = p.up + " из " + p.total + " активно";
+      var chips = p.containers.map(function (c) {
+        return '<span class="chip"><span class="chip-dot ' + (c.active ? "on" : "off") +
+          '"></span>' + c.name + "</span>";
+      }).join("");
+      document.getElementById("penpotChips").innerHTML = chips;
+
+      // общий индикатор здоровья
+      var okAll = w.active && all;
+      var hd = document.getElementById("healthDot");
+      hd.style.background = okAll ? "var(--success)" : (w.active || p.up) ? "var(--warning)" : "var(--text-3)";
+      document.getElementById("healthText").textContent =
+        okAll ? "всё работает" : (w.active || p.up) ? "частично" : "всё остановлено";
+    }
+
+    function toggleActions(id, running) {
+      var box = document.getElementById(id);
+      box.querySelectorAll(".btn").forEach(function (b) {
+        var a = b.dataset.action;
+        var isStart = a.indexOf("start") >= 0;
+        b.style.display = (isStart ? !running : running) ? "" : "none";
+      });
+    }
+
+    function tick() {
+      if (!live || live.wow.uptime == null || !live.wow.active) return;
+      var extra = (Date.now() - live.at) / 1000;
+      document.getElementById("wowUptime").textContent = fmtUptime(live.wow.uptime + extra);
+    }
+
+    function refresh() {
+      return fetch("/api/status").then(function (r) { return r.json(); }).then(function (d) {
+        live = { wow: d.wow, at: Date.now() };
+        render(d);
+        document.getElementById("wowUptime").textContent =
+          d.wow.active ? fmtUptime(d.wow.uptime) : "—";
+      }).catch(function () {
+        document.getElementById("healthText").textContent = "нет связи";
+        document.getElementById("healthDot").style.background = "var(--danger)";
+      });
+    }
+
+    function toast(ok, msg) {
+      var t = document.createElement("div");
+      t.className = "toast " + (ok ? "ok" : "err");
+      t.textContent = msg;
+      var wrap = document.getElementById("toasts");
+      wrap.appendChild(t);
+      setTimeout(function () {
+        t.style.transition = "opacity 240ms"; t.style.opacity = "0";
+        setTimeout(function () { t.remove(); }, 240);
+      }, 3600);
+    }
+
+    var LABEL = {
+      "wow-start": "WoW запускается…", "wow-stop": "WoW остановлен", "wow-restart": "WoW перезапускается…",
+      "penpot-start": "Penpot запускается…", "penpot-stop": "Penpot остановлен", "penpot-restart": "Penpot перезапускается…"
+    };
+
+    function act(btn) {
+      var action = btn.dataset.action;
+      if (btn.dataset.confirm && !window.confirm(btn.dataset.confirm)) return;
+      var siblings = btn.parentElement.querySelectorAll(".btn");
+      siblings.forEach(function (b) { b.disabled = true; });
+      btn.classList.add("busy");
+      fetch("/api/action", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: action })
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        toast(res.ok, res.ok ? (LABEL[action] || "Готово") : ("Ошибка: " + (res.err || "не удалось")));
+      }).catch(function () {
+        toast(false, "Ошибка связи с сервером");
+      }).finally(function () {
+        btn.classList.remove("busy");
+        siblings.forEach(function (b) { b.disabled = false; });
+        boost();                    // ускоряем поллинг, пока сервис поднимается/гаснет
+        setTimeout(refresh, 700);   // и сразу подтягиваем свежий статус
+      });
+    }
+
+    // ── события ──
+    document.querySelectorAll(".tab").forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        document.querySelectorAll(".tab").forEach(function (t) {
+          t.classList.toggle("active", t === tab);
+          t.setAttribute("aria-selected", t === tab ? "true" : "false");
+        });
+        document.querySelectorAll(".panel").forEach(function (p) {
+          var on = p.id === "panel-" + tab.dataset.tab;
+          p.classList.toggle("active", on); p.hidden = !on;
+        });
+      });
+    });
+    document.querySelectorAll(".btn[data-action]").forEach(function (b) {
+      b.addEventListener("click", function () { act(b); });
+    });
+
+    function clock() {
+      var d = new Date();
+      var p = function (n) { return (n < 10 ? "0" : "") + n; };
+      document.getElementById("clock").textContent = p(d.getHours()) + ":" + p(d.getMinutes());
+    }
+
+    // самопланирующийся поллинг: 2с в бустовом окне (после действия / во время
+    // запуска-остановки), иначе 3с.
+    function loop() {
+      refresh().finally(function () {
+        setTimeout(loop, Date.now() < boostUntil ? 2000 : 3000);
+      });
+    }
+
+    clock(); setInterval(clock, 15000);
+    loop();
+    setInterval(tick, 1000);
+  })();
+</script>

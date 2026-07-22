@@ -64,6 +64,7 @@ in
     wl-clipboard
     grim
     slurp
+    grimblast   # обёртка grim+slurp с --freeze (замораживает экран перед выделением)
     wlr-randr
 
     # -------------------------------------------------------------------------
@@ -79,9 +80,8 @@ in
     brightnessctl
 
     # -------------------------------------------------------------------------
-    # Браузеры
+    # Браузеры (Firefox — ниже через programs.firefox, чтобы доверял системному CA)
     # -------------------------------------------------------------------------
-    firefox-bin
 
     # -------------------------------------------------------------------------
     # Коммуникации
@@ -278,4 +278,15 @@ in
     powertop
     acpi
   ];
+
+  # Firefox с доверием к системному хранилищу сертификатов
+  # (ImportEnterpriseRoots → доверяет Tsai Local CA из security.pki → penpot.tsai без ручного импорта)
+  programs.firefox = {
+    enable  = true;
+    package = pkgs.firefox-bin;
+    policies.Certificates = {
+      ImportEnterpriseRoots = true;              # доверять системному хранилищу
+      Install = [ "${../secrets/ca.crt}" ];      # + явно ставим Tsai Local CA (надёжно для firefox-bin)
+    };
+  };
 }

@@ -51,7 +51,6 @@
     exec-once = waybar
     exec-once = nm-applet --indicator
     exec-once = awww-daemon && sleep 0.5 && smart-wallpaper
-    exec-once = hypridle
     exec-once = swaync
     exec-once = wl-paste --type text --watch cliphist store
     exec-once = wl-paste --type image --watch cliphist store
@@ -120,7 +119,6 @@
     # LAYOUT
     # ==========================================================================
     dwindle {
-      pseudotile = true
       preserve_split = true
       smart_split = false
       smart_resizing = true
@@ -133,11 +131,10 @@
     misc {
       force_default_wallpaper = 0
       disable_hyprland_logo = true
-      vfr = true
     }
 
     cursor {
-      no_hardware_cursors = false
+      no_hardware_cursors = true  # NVIDIA+PRIME: display engine на P8 (210MHz) не тянет hw cursor на 100Hz
     }
 
     # ==========================================================================
@@ -182,8 +179,8 @@
     bind = $mod, V, togglefloating,
     bind = $mod, F, fullscreen, 0
     bind = $mod SHIFT, F, fullscreen, 1
-    bind = $mod, P, pseudo,
-    bind = $mod, J, togglesplit,
+    bind = $mod, P, layoutmsg, pseudo
+    bind = $mod, J, layoutmsg, togglesplit
     bind = $mod, G, togglegroup,
     bind = $mod, TAB, changegroupactive, f
     bind = $mod SHIFT, TAB, changegroupactive, b
@@ -341,16 +338,20 @@
     # ==========================================================================
     # СКРИНШОТЫ
     # ==========================================================================
+    # --freeze морозит экран (hyprpicker-оверлей поверх игры), потом выделяешь
     # Область → буфер обмена
-    bind = , Print, exec, grim -g "$(slurp)" - | wl-copy
+    bind = , Print, exec, grimblast --freeze copy area
     # Весь экран → буфер обмена
-    bind = SHIFT, Print, exec, grim - | wl-copy
+    bind = SHIFT, Print, exec, grimblast copy screen
     # Область → редактор swappy → сохранить/скопировать
-    bind = $mod, Print, exec, grim -g "$(slurp)" - | swappy -f -
+    bind = $mod, Print, exec, grimblast --freeze save area - | swappy -f -
     # Весь экран → редактор swappy
-    bind = $mod SHIFT, Print, exec, grim - | swappy -f -
+    bind = $mod SHIFT, Print, exec, grimblast save screen - | swappy -f -
     # Активное окно → буфер
-    bind = ALT, Print, exec, hyprctl -j activewindow | jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | grim -g - - | wl-copy
+    bind = ALT, Print, exec, grimblast --freeze copy active
+
+    # Перевод текста с экрана → OCR → на русский → буфер + уведомление
+    bind = $mod, SPACE, exec, screen-translate
 
     # ==========================================================================
     # АУДИО (с swayosd для красивого OSD)
@@ -393,6 +394,7 @@
     windowrule = float on, match:title Picture-in-Picture
     windowrule = float on, match:class xdg-desktop-portal-gtk
     windowrule = float on, match:class cheatsheet
+    windowrule = pin on, match:class cheatsheet
     windowrule = size 1100 480, match:class cheatsheet
 
     # Размеры для плавающих

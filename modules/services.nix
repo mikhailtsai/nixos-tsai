@@ -2,6 +2,7 @@
 
 {
   services.flatpak.enable = true;
+  services.gvfs.enable = true;
 
   # Samba (сетевой доступ к файлам)
   services.samba = {

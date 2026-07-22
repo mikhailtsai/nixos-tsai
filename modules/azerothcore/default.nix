@@ -362,7 +362,7 @@ in {
       after         = [ "mysql.service" ];
       requires      = [ "mysql.service" ];
       before        = [ "azerothcore-auth.service" "azerothcore-world.service" ];
-      wantedBy      = [ "multi-user.target" ];
+      wantedBy      = [];  # не стартовать автоматически — запуск только вручную
 
       serviceConfig = {
         Type            = "oneshot";
@@ -467,7 +467,7 @@ in {
       description = "AzerothCore Auth Server";
       after       = [ "network.target" ] ++ lib.optional cfg.mysql.createLocally "azerothcore-db-setup.service";
       requires    = lib.optional cfg.mysql.createLocally "azerothcore-db-setup.service";
-      wantedBy    = [ "multi-user.target" ];
+      wantedBy    = [];  # не стартовать автоматически
 
       serviceConfig = {
         User             = "azerothcore";
@@ -488,7 +488,7 @@ in {
       # World стартует после Auth — Auth первым регистрирует реалм в БД
       after       = [ "network.target" "azerothcore-auth.service" ];
       requires    = [ "azerothcore-auth.service" ];
-      wantedBy    = [ "multi-user.target" ];
+      wantedBy    = [];  # не стартовать автоматически
 
       serviceConfig = {
         User             = "azerothcore";
