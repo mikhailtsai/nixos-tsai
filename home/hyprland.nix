@@ -408,6 +408,9 @@
     windowrule = center on, match:class nm-connection-editor
     windowrule = center on, match:class xdg-desktop-portal-gtk
     windowrule = center on, match:class cheatsheet
+    # REAPER (X11/XWayland) сам позиционировать окна не может — Wayland ставит их в 0,0.
+    # Центрируем его плавающие окна (диалоги, FX, MIDI-редактор) вместо угла.
+    windowrule = center on, match:class REAPER
     windowrule = center on, match:class imv
     windowrule = center on, match:class mpv
 

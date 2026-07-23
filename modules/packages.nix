@@ -14,6 +14,21 @@ let
     ln -s ${pkgs.beyond-all-reason}/share/applications $out/share/applications
     ln -s ${pkgs.beyond-all-reason}/share/icons $out/share/icons
   '';
+
+  # ReaImGui / js_ReaScriptAPI ставятся через ReaPack как готовые бинарники и требуют
+  # gtk3/freetype/cairo/epoxy/glib — их нет в LD_LIBRARY_PATH обёртки reaper из nixpkgs,
+  # поэтому расширения молча не грузятся (ImGui_* = nil). Дооборачиваем reaper с этими либами.
+  # jackLibrary = pipewire.jack — чтобы JACK-режим REAPER цеплялся к PipeWire (система на нём),
+  # иначе REAPER берёт Scarlett через ALSA в эксклюзив и не отдаёт её после закрытия.
+  reaper-with-libs = (pkgs.reaper.override { jackLibrary = pkgs.pipewire.jack; }).overrideAttrs (old: {
+    postFixup = (old.postFixup or "") + ''
+      wrapProgram $out/opt/REAPER/reaper \
+        --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath (with pkgs; [
+          gtk3 glib cairo pango gdk-pixbuf
+          freetype fontconfig libpng zlib libepoxy
+        ])}"
+    '';
+  });
 in
 
 {
@@ -115,7 +130,7 @@ in
     # -------------------------------------------------------------------------
     # Аудио / DAW
     # -------------------------------------------------------------------------
-    reaper
+    reaper-with-libs   # reaper + либы для ReaPack-расширений (ReaImGui, js_ReaScriptAPI)
     audacity
 
     # VST плагины — Синтезаторы
@@ -140,6 +155,7 @@ in
     drumkv1
     samplv1
     sfizz
+    decent-sampler     # плеер .dspreset-библиотек (готовые гитарные либы для MIDI)
     x42-avldrums
     ninjas2
     fluidsynth

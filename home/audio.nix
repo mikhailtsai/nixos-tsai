@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, lib, ... }:
 
 let
   # Скрываем .desktop файлы аудио плагинов из rofi — они нужны только внутри DAW
@@ -232,4 +232,23 @@ in
     inherit name;
     value = { name = name; noDisplay = true; };
   }) hiddenPlugins);
+
+  # Reaper-расширения из nixpkgs (пропатчены autoPatchelfHook, поэтому грузятся на NixOS
+  # в отличие от ручной скачки с сайта). Кладём .so в UserPlugins.
+  # НЕ симлинком: ReaPack самообновляется и перезаписывает свой .so реальным файлом,
+  # что ломало каждый ребилд (home-manager отказывался клоббить). Поэтому копируем
+  # только если файла ещё нет — дальше ReaPack волен обновлять себя сам.
+  # Контент (темы, скрипты) ставится самим ReaPack в рантайме — в git его не держим.
+  home.activation.reaperExtensions = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    ext_dir="$HOME/.config/REAPER/UserPlugins"
+    run mkdir -p "$ext_dir"
+    for src in \
+      "${pkgs.reaper-sws-extension}/UserPlugins/reaper_sws-x86_64.so" \
+      "${pkgs.reaper-reapack-extension}/UserPlugins/reaper_reapack-x86_64.so"; do
+      dest="$ext_dir/$(basename "$src")"
+      if [ ! -e "$dest" ]; then
+        run install -m644 "$src" "$dest"
+      fi
+    done
+  '';
 }
