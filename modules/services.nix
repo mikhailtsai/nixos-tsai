@@ -27,6 +27,8 @@
     enable = true;
     package = pkgs.jdk17;
   };
+  # adb для физического устройства: команда из android-tools (packages.nix),
+  # udev/uaccess-правила ставит systemd 258 автоматически (programs.adb устарел).
 
   virtualisation.docker.enable = true;
 }

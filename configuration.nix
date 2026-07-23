@@ -22,6 +22,7 @@
   };
 
   nixpkgs.config.allowUnfree = true;
+  nixpkgs.config.android_sdk.accept_license = true; # для androidenv (Flutter/Android SDK)
   nixpkgs.config.permittedInsecurePackages = [
     "electron-39.8.10" # bitwarden-desktop пока не обновился до нового electron
   ];
@@ -80,7 +81,7 @@
   users.users.${vars.username} = {
     isNormalUser = true;
     description  = vars.fullName;
-    extraGroups  = [ "networkmanager" "wheel" "video" "audio" "input" "docker" ];
+    extraGroups  = [ "networkmanager" "wheel" "video" "audio" "input" "docker" "kvm" ];
     homeMode     = "0711";  # traverse для azerothcore (чтение DataDir)
   };
 

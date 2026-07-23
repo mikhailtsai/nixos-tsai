@@ -29,6 +29,36 @@ let
         ])}"
     '';
   });
+
+  # Android SDK для Flutter — собираем декларативно через androidenv (лицензия
+  # принята в configuration.nix). Бинарники (aapt2 и пр.) пропатчены под NixOS,
+  # поэтому Gradle-сборки Flutter под Android работают без nix-ld-костылей.
+  # includeEmulator + системный образ x86_64 → AVD-эмулятор (KVM);
+  # физическое устройство цепляется через programs.adb (udev) в configuration.nix.
+  androidComposition = pkgs.androidenv.composeAndroidPackages {
+    platformVersions    = [ "35" "36" ];
+    buildToolsVersions  = [ "35.0.0" "36.0.0" ];
+    cmdLineToolsVersion = "latest";
+    includeEmulator     = true;
+    includeSystemImages = true;
+    systemImageTypes    = [ "google_apis_playstore" ];
+    abiVersions         = [ "x86_64" ];   # host-эмулятор на Intel → x86_64 образ
+    includeNDK          = true;            # нативная (C/C++) компиляция под Android
+    # SDK в /nix/store только для чтения → flutter doctor --android-licenses не
+    # запишет согласие. Принимаем все нужные лицензии декларативно.
+    extraLicenses = [
+      "android-sdk-preview-license"
+      "android-googlexr-license"      # требует эмулятор 36.x (Android XR image)
+      "android-googletv-license"
+      "android-sdk-arm-dbt-license"
+      "google-gdk-license"
+      "intel-android-extra-license"
+      "intel-android-sysimage-license"
+      "mips-android-sysimage-license"
+    ];
+  };
+  androidSdk  = androidComposition.androidsdk;
+  androidHome = "${androidSdk}/libexec/android-sdk";
 in
 
 {
@@ -236,6 +266,8 @@ in
     flutter
     android-studio
     android-tools
+    androidSdk       # platform-tools + build-tools + платформы (androidenv)
+    mesa-demos       # eglinfo — чтобы flutter doctor не ругался на драйвер
 
     # -------------------------------------------------------------------------
     # Игры
@@ -294,6 +326,13 @@ in
     powertop
     acpi
   ];
+
+  # Flutter/Android: где лежит SDK + web-таргет через chromium (flutter ищет google-chrome)
+  environment.sessionVariables = {
+    ANDROID_HOME      = androidHome;
+    ANDROID_SDK_ROOT  = androidHome;
+    CHROME_EXECUTABLE = "${pkgs.chromium}/bin/chromium";
+  };
 
   # Firefox с доверием к системному хранилищу сертификатов
   # (ImportEnterpriseRoots → доверяет Tsai Local CA из security.pki → penpot.tsai без ручного импорта)
