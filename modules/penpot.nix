@@ -8,7 +8,7 @@
 #        127.0.0.1:9001 penpot-frontend → backend/exporter/mcp/postgres/valkey.
 
 let
-  penpotVersion = "2.16";
+  penpotVersion = "2.17";
   serverIP      = "192.168.1.57";
   wifiIface     = "wlp110s0f0";
 
