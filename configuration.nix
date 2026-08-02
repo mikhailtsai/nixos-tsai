@@ -65,6 +65,9 @@
   time.timeZone = vars.timezone;
 
   i18n.defaultLocale = vars.locale;
+  # Wine сам выставляет ANSI codepage 1251 из ru_RU (для кириллицы в старых
+  # не-Unicode играх, VTMB и т.п.) — достаточно ru_RU.UTF-8 в LANG, отдельная
+  # системная CP1251-локаль glibc для русского не существует.
   i18n.extraLocales = [ "ru_RU.UTF-8/UTF-8" ];
   i18n.extraLocaleSettings = {
     LC_ADDRESS        = vars.regionLocale;
@@ -204,9 +207,29 @@
 
   # ── zram swap ────────────────────────────────────────────────────────────────
   # Буфер сжатой памяти — защита от OOM при одновременном запуске Steam + AzerothCore
+  # zram живёт В RAM (приоритет 5) → используется первым для лёгкого давления.
   zramSwap = {
     enable = true;
     memoryPercent = 25; # ~8 ГБ compressed swap из 32 ГБ RAM
+  };
+
+  # ── диск-своп (overflow) ──────────────────────────────────────────────────────
+  # Настоящий запас на SSD: вытесняет холодные страницы из RAM, когда zram уже полон.
+  # Приоритет по умолчанию (-2) ниже zram → ядро спиллит сюда только под реальным
+  # давлением. Файл на LUKS-корне → шифруется автоматически.
+  # Причина правки: 2 авг жёсткий фриз (livelock reclaim) при развороте 1000 ботов —
+  # zram запаса не даёт, т.к. сам в RAM. См. memory: rebuild-oom-kills-session.
+  swapDevices = [{
+    device = "/var/lib/swapfile";
+    size   = 16 * 1024; # 16 ГБ (в МБ)
+  }];
+
+  # ── systemd-oomd ──────────────────────────────────────────────────────────────
+  # Отстреливает самый жирный процесс ДО тотального livelock'а, вместо вечного фриза.
+  systemd.oomd = {
+    enable = true;
+    enableRootSlice   = true;  # системные сервисы (в т.ч. игры вне user-сессии)
+    enableUserSlices  = true;  # Hyprland-сеанс и его приложения
   };
 
   system.stateVersion = "25.11";
