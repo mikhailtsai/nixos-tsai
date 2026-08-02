@@ -275,6 +275,8 @@ in
     lutris
     heroic
     mangohud
+    protontricks    # правка Proton-префиксов Steam-игр
+    winetricks      # тюнинг wine-префиксов (Lutris/standalone)
     mindustry
     wesnoth
     dwarf-fortress
