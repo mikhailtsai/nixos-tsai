@@ -26,18 +26,29 @@ let
   vault-umount = pkgs.writeShellScriptBin "vault-umount" ''
     ${pkgs.coreutils}/bin/sync || true
     if ${pkgs.util-linux}/bin/mountpoint -q ${vaultMnt}; then
-      # Не размонтируем силой: если Vault занят другим процессом, ленивый umount
-      # оставит раздел расшифрованным «невидимо». Честно откажемся и покажем, кто держит.
-      if ! ${pkgs.util-linux}/bin/umount ${vaultMnt} 2>/dev/null; then
-        echo "⚠️  Vault занят другим процессом — оставляю смонтированным (иначе можно потерять данные)." >&2
-        echo "    Держат Vault:" >&2
+      # 1) Мягко: несколько попыток — даём yazi и его хелперам (превью и т.п.)
+      #    самим освободить точку монтирования, чтобы никого не убивать зря.
+      for _ in 1 2 3 4 5; do
+        ${pkgs.util-linux}/bin/umount ${vaultMnt} 2>/dev/null && break
+        ${pkgs.coreutils}/bin/sleep 0.3
+      done
+      # 2) Всё ещё занято (напр. окно закрыли через super+q, хелперы зависли) —
+      #    форсим: показываем и принудительно завершаем держащих, затем umount.
+      if ${pkgs.util-linux}/bin/mountpoint -q ${vaultMnt}; then
+        echo "⚠️  Vault занят — принудительно завершаю держащие процессы:" >&2
         ${pkgs.psmisc}/bin/fuser -vm ${vaultMnt} >&2 2>&1 || true
-        echo "    Закрой их и выполни: sudo vault-umount" >&2
-        exit 1
+        ${pkgs.psmisc}/bin/fuser -km ${vaultMnt} 2>/dev/null || true
+        ${pkgs.coreutils}/bin/sleep 0.5
+        ${pkgs.util-linux}/bin/umount ${vaultMnt} 2>/dev/null \
+          || ${pkgs.util-linux}/bin/umount -l ${vaultMnt}
       fi
     fi
+    # luksClose с ретраем: устройство может ещё пару мгновений быть занятым.
     if [ -e /dev/mapper/${vaultName} ]; then
-      ${pkgs.cryptsetup}/bin/cryptsetup luksClose ${vaultName}
+      for _ in 1 2 3 4 5; do
+        ${pkgs.cryptsetup}/bin/cryptsetup luksClose ${vaultName} && break
+        ${pkgs.coreutils}/bin/sleep 0.3
+      done
     fi
   '';
 in

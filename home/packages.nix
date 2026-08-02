@@ -126,8 +126,17 @@ let
   vault = pkgs.writeShellScriptBin "vault" ''
     MNT="$HOME/Vault"
 
-    lock() { sudo /run/current-system/sw/bin/vault-umount; }
-    trap lock EXIT INT TERM
+    # Блокировка при любом выходе, включая SIGHUP (закрытие окна через super+q).
+    # trap снимаем сразу, чтобы EXIT после INT/TERM/HUP не запустил lock повторно.
+    lock() {
+      trap - EXIT INT TERM HUP
+      if sudo /run/current-system/sw/bin/vault-umount; then
+        ${pkgs.libnotify}/bin/notify-send "🔒 Vault" "Хранилище заблокировано" 2>/dev/null || true
+      else
+        ${pkgs.libnotify}/bin/notify-send -u critical "⚠️ Vault" "Не удалось заблокировать — выполни: sudo vault-umount" 2>/dev/null || true
+      fi
+    }
+    trap lock EXIT INT TERM HUP
 
     echo "🔒 Введите пароль от Vault:"
     if ! sudo /run/current-system/sw/bin/vault-mount; then
