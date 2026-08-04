@@ -39,6 +39,10 @@
   # Загрузчик — systemd-boot для UEFI
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  # memtest86+ пункт в загрузчике: RAM без ECC (EDAC ie31200 = No ECC support),
+  # а фриз 4 авг был kernel Oops → шторм GP-fault (порча памяти/железо). ECC не поймает
+  # битфлипы, memtest — единственная проверка RAM. Загрузить из boot-меню при повторе.
+  boot.loader.systemd-boot.memtest86.enable = true;
 
   # Ранняя загрузка NVIDIA DRM для работы внешнего монитора при загрузке
   boot.initrd.kernelModules = [ "nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm" ];

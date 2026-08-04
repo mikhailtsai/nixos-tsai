@@ -232,5 +232,11 @@
     enableUserSlices  = true;  # Hyprland-сеанс и его приложения
   };
 
+  # ── rasdaemon: мониторинг аппаратных ошибок (MCE / память / PCIe) ──────────────
+  # Причина: перед фризом 2 авг были corrected MCE + kernel Oops, но без rasdaemon
+  # они видны только по обрывкам pstore. Демон пишет их в БД — при повторе сбоя
+  # будет нормальная картина: `ras-mc-ctl --summary`, `ras-mc-ctl --errors`.
+  hardware.rasdaemon.enable = true;
+
   system.stateVersion = "25.11";
 }
