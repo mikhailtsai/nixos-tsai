@@ -9,6 +9,7 @@
     ./modules/desktop.nix
     ./modules/services.nix
     ./modules/gaming.nix
+    ./modules/x11-session.nix  # X11/XFCE-сессия для игр (GPU-скейлинг), рядом с Hyprland
     ./modules/packages.nix
     ./modules/storage.nix  # ~/Storage (открытый) + ~/Vault (LUKS по требованию)
     ./modules/penpot.nix   # Penpot (self-hosted Figma) на https://penpot.tsai + MCP
