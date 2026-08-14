@@ -14,6 +14,7 @@
     ./modules/storage.nix  # ~/Storage (открытый) + ~/Vault (LUKS по требованию)
     ./modules/penpot.nix   # Penpot (self-hosted Figma) на https://penpot.tsai + MCP
     ./modules/home-dashboard.nix  # Веб-панель управления сервисами на https://home.tsai
+    ./modules/vikunja.nix  # Vikunja (self-hosted таск-менеджер) на https://tasks.tsai + MCP
     ./modules/azerothcore  # WoW WotLK 3.3.5a private server (выключен пока enable = false)
   ];
 

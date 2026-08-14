@@ -23,6 +23,13 @@ let
   ];
   penpotUnits = map (c: "docker-penpot-${c}") penpotContainers;
 
+  # Vikunja: имена контейнеров неоднородны (vikunja + vikunja-postgres)
+  vikunjaServices = [
+    { name = "vikunja";  unit = "docker-vikunja"; }
+    { name = "postgres"; unit = "docker-vikunja-postgres"; }
+  ];
+  vikunjaUnits = map (s: s.unit) vikunjaServices;
+
   systemctl = "${pkgs.systemd}/bin/systemctl";
 
   # ── Привилегированный ctl: единственное, что homedash делает через sudo ────
@@ -32,15 +39,19 @@ let
     set -eu
     WOW="${lib.concatStringsSep " " wowUnits}"
     PENPOT="${lib.concatStringsSep " " penpotUnits}"
+    VIKUNJA="${lib.concatStringsSep " " vikunjaUnits}"
     # --no-block: не ждём завершения запуска (worldserver стартует долго),
     # UI показывает прогресс поллингом статуса.
     case "''${1:-}" in
-      wow-start)      exec ${systemctl} start   --no-block $WOW ;;
-      wow-stop)       exec ${systemctl} stop    --no-block $WOW ;;
-      wow-restart)    exec ${systemctl} restart --no-block azerothcore-auth azerothcore-world ;;
-      penpot-start)   exec ${systemctl} start   --no-block $PENPOT ;;
-      penpot-stop)    exec ${systemctl} stop    --no-block $PENPOT ;;
-      penpot-restart) exec ${systemctl} restart --no-block $PENPOT ;;
+      wow-start)       exec ${systemctl} start   --no-block $WOW ;;
+      wow-stop)        exec ${systemctl} stop    --no-block $WOW ;;
+      wow-restart)     exec ${systemctl} restart --no-block azerothcore-auth azerothcore-world ;;
+      penpot-start)    exec ${systemctl} start   --no-block $PENPOT ;;
+      penpot-stop)     exec ${systemctl} stop    --no-block $PENPOT ;;
+      penpot-restart)  exec ${systemctl} restart --no-block $PENPOT ;;
+      vikunja-start)   exec ${systemctl} start   --no-block $VIKUNJA ;;
+      vikunja-stop)    exec ${systemctl} stop    --no-block $VIKUNJA ;;
+      vikunja-restart) exec ${systemctl} restart --no-block $VIKUNJA ;;
       *) echo "unknown action: ''${1:-}" >&2; exit 1 ;;
     esac
   '';
@@ -56,11 +67,13 @@ let
     SUDO       = "/run/wrappers/bin/sudo"  # setuid-обёртка NixOS (в PATH сервиса её нет)
     WOW_UNITS  = ${builtins.toJSON wowUnits}
     PENPOT     = ${builtins.toJSON (lib.zipListsWith (n: u: { name = n; unit = u; }) penpotContainers penpotUnits)}
+    VIKUNJA    = ${builtins.toJSON vikunjaServices}
 
     # Разрешённые действия → аргумент ctl-обёртки
     ACTIONS = {
         "wow-start", "wow-stop", "wow-restart",
         "penpot-start", "penpot-stop", "penpot-restart",
+        "vikunja-start", "vikunja-stop", "vikunja-restart",
     }
 
     def sh(args):
@@ -134,7 +147,21 @@ let
                           "state": p.get("SubState", p.get("ActiveState", "?"))})
         penpot = {"up": up, "total": len(PENPOT), "mem_mb": mem or None,
                   "containers": conts}
-        return {"wow": wow, "penpot": penpot}
+
+        vconts, vup, vmem = [], 0, 0
+        for c in VIKUNJA:
+            p = unit_props(c["unit"])
+            act = p.get("ActiveState") == "active"
+            if act:
+                vup += 1
+                mm = mem_mb(p.get("MemoryCurrent", ""))
+                if mm:
+                    vmem += mm
+            vconts.append({"name": c["name"], "active": act,
+                           "state": p.get("SubState", p.get("ActiveState", "?"))})
+        vikunja = {"up": vup, "total": len(VIKUNJA), "mem_mb": vmem or None,
+                   "containers": vconts}
+        return {"wow": wow, "penpot": penpot, "vikunja": vikunja}
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
