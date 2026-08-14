@@ -230,6 +230,7 @@ in
     jetbrains.webstorm
     jetbrains.rider
     godot_4
+    unityhub          # Unity Hub (FHS-обёртка); сами редакторы Unity ставятся через Hub в рантайме
 
     # -------------------------------------------------------------------------
     # Разработка — инструменты
@@ -237,6 +238,7 @@ in
     dbeaver-bin
     postman
     python3
+    uv                # Unity MCP требует uv; ставим из nixpkgs (сам Unity не может — read-only store)
     rustup
     gcc
     gnumake
