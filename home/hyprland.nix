@@ -414,6 +414,16 @@
     windowrule = center on, match:class imv
     windowrule = center on, match:class mpv
 
+    # Second Sight и другие старые exclusive-fullscreen игры через wine virtual desktop:
+    # окно стола (class explorer.exe, title "Wine Desktop") под Lutris уходит в fullscreen
+    # и рисует контент в углу. suppress_event fullscreen снимает это → срабатывают
+    # float+size+center. Игра рендерит 1920x1440 (4:3); при масштабе монитора 1.25
+    # логический размер 1536x1152 = 1920x1440 физических (пиксель-в-пиксель), центр, поля по бокам.
+    windowrule = suppress_event fullscreen, match:class explorer.exe
+    windowrule = float on, match:class explorer.exe
+    windowrule = size 1536 1152, match:class explorer.exe
+    windowrule = center on, match:class explorer.exe
+
 
     # Прозрачность убрана — вызывала лишний compositing каждый кадр
     # windowrule = opacity 0.95, match:class kitty
