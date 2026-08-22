@@ -1,6 +1,16 @@
 .idea/
 
+# Локальные настройки Claude Code (машинно-специфичные разрешения)
+.claude/settings.local.json
+
+# Артефакт nixos-rebuild build / nix build — симлинк в /nix/store
+result
+result-*
+
+# Секреты: в git только публичный CA-сертификат
+secrets/*
+!secrets/ca.crt
+
 # Wallpapers (except default)
 wallpapers/*
 !wallpapers/wallpaper.jpg
-
