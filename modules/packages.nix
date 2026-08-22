@@ -204,7 +204,7 @@ in
     chow-kick
     chow-phaser
     tap-plugins
-    eq10q
+    # eq10q            # удалён из nixpkgs — зависел от deprecated gtk2/gtkmm2 (замена: ZamEQ2 из zam-plugins / fil4 из x42)
     noise-repellent
     wolf-shaper
 
@@ -320,7 +320,7 @@ in
     # -------------------------------------------------------------------------
     gparted
     baobab
-    jmtpfs
+    simple-mtpfs      # замена jmtpfs (удалён из nixpkgs как unmaintained)
 
     # -------------------------------------------------------------------------
     # Мониторинг оборудования
