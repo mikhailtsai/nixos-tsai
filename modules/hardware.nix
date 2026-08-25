@@ -52,6 +52,23 @@
     # держал CRTC, из-за чего при переключении на Wayland-композитор (cage/Hyprland на vt1)
     # modeset-handoff зависал — экран оставался с прошлым кадром, GUI не появлялся.
     # Только modeset=1 нужен для Wayland; консоль теперь через simpledrm (внутр. панель).
+
+    # ── Фриз 25 авг: hard LOCKUP на CPU1 в ct_idle_exit/cpuidle_enter_state ──────
+    # CPU не вышел из глубокого C-state и перестал отвечать на IPI. Дальше каскад:
+    # любой процесс, делавший TLB shootdown (cursor → madvise, containerd, acpid →
+    # fork, ext4 writeback, kcompactd), вечно ждал ACK в smp_call_function_many_cond.
+    # Машина не паниковала, а «застыла» — пришлось жать кнопку питания.
+    # Ограничиваем idle до C1 (MWAIT 0x0). Убираются C2_ACPI (MWAIT 0x21) и
+    # C3_ACPI (MWAIT 0x60 = C6, latency 1048мкс) — именно в C6 и завис CPU1.
+    # Цена — питание в простое; ноутбук стационарный, от батареи не работает.
+    "intel_idle.max_cstate=1"
+    "processor.max_cstate=1"   # на случай отката с intel_idle на acpi_idle
+
+    # Падать, а не зависать: при hard lockup — паника (дамп в EFI-pstore) и
+    # перезагрузка через 20с, вместо мёртвого зависания без следов.
+    # Прошлый раз ядро засекло lockup в 16:49:43, но система висела ещё 3 минуты.
+    "nmi_watchdog=panic"
+    "panic=20"
   ];
 
   # Разрешить непривилегированным процессам слушать на портах ≥ 443 (для NX dev-сервера)
