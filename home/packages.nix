@@ -177,6 +177,7 @@ in
     # Node.js
     nodejs
     yarn
+    bun
 
     # CLI утилиты
     eza

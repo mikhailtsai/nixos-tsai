@@ -227,6 +227,7 @@ in
     # Разработка — редакторы и IDE
     # -------------------------------------------------------------------------
     vscode
+    code-cursor       # Cursor — AI-редактор (форк VS Code), Electron: Wayland через ELECTRON_OZONE_PLATFORM_HINT
     jetbrains.webstorm
     jetbrains.rider
     godot_4
