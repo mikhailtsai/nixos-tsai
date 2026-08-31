@@ -103,7 +103,10 @@
     supplementaryGroups = [ "leet" ];
 
     mods = {
-      autobalance = false;
+      # Настройки AutoBalance.* лежат в worldserver.extraSettings ниже — до 31 авг 2026
+      # мод был выключен, и все они молча игнорировались. Включаем, чтобы данжи
+      # подстраивались под размер группы (у нас группы набираются ботами разных уровней).
+      autobalance = true;
       ahbot       = true;   # бот аукционного дома
       aoeLoot        = false;
       transmog       = true;    # трансмогрификация внешнего вида
@@ -120,32 +123,84 @@
     worldserver.playerbots = {
       "AiPlayerbot.DisabledWithoutRealPlayer" = "1";
       "AiPlayerbot.SelfBotLevel"              = "2";
-      "AiPlayerbot.SyncLevelWithPlayers"      = "1";
       "AiPlayerbot.RandomBotXPRate"           = "1";    # как у игроков
       "AiPlayerbot.MinRandomBots"             = "1000";
       "AiPlayerbot.MaxRandomBots"             = "1000";
       "AiPlayerbot.AddClassAccountPoolSize"   = "0";   # отключаем пул AddClass-ботов
-      # Уровни 1-80 с равномерным распределением
       "AiPlayerbot.RandomBotMinLevel"         = "1";
       "AiPlayerbot.RandomBotMaxLevel"         = "80";
       "AiPlayerbot.RandomBotMinLevelChance"   = "0";
       "AiPlayerbot.RandomBotMaxLevelChance"   = "0";
+      "AiPlayerbot.RandomBotAllianceRatio"    = "50";
+      "AiPlayerbot.RandomBotHordeRatio"       = "50";
+
+      # ── Уровни ботов ───────────────────────────────────────────────────────
+      # SyncLevelWithPlayers подтягивал потолок ботов к «максимум живого игрока + 3»
+      # (в логе: «Max player level is 72, max bot level set to 75») — из-за чего
+      # ботов 80-го уровня не существовало вовсе и рейды нечем было заполнять.
+      # Выключаем и отдаём распределение системе брекетов.
+      "AiPlayerbot.SyncLevelWithPlayers"      = "0";
+
+      # LevelBrackets: 9 диапазонов уровней, у каждого целевой % от популяции фракции.
+      # Дефолтная раскладка (12/11×8) даёт ~11% на брекет «ровно 80» — при 1000 ботов
+      # это ~110 восьмидесятых, чего хватает и на 25-ки.
+      "AiPlayerbot.LevelBrackets.Enabled"                        = "1";
+      "AiPlayerbot.LevelBrackets.Dynamic.UseDynamicDistribution" = "1";
+      # Насколько сильно боты стягиваются в брекет, где стоят живые игроки.
+      # 1.0 — почти незаметно, 10-15 — «толпа вокруг тебя». 5.0 = заметная компания
+      # на своём уровне, но все остальные брекеты остаются населены (~9.3% каждый).
+      "AiPlayerbot.LevelBrackets.Dynamic.RealPlayerWeight"       = "5.0";
+      # Не трогать ботов, состоящих в гильдии под началом живого игрока, и друзей.
+      "AiPlayerbot.LevelBrackets.IgnoreGuildBotsWithRealPlayers" = "1";
+      "AiPlayerbot.LevelBrackets.IgnoreFriendListed"             = "1";
+      "AiPlayerbot.LevelBrackets.IgnoreArenaTeamBots"            = "1";
+
+      # ResetBotLevel: боты, докачавшиеся до 80, через неделю игры на капе
+      # возвращаются на 1-й — популяция обновляется, низкие уровни не пустеют.
+      # RestrictTimePlayed обязателен: без него бот сбрасывается сразу при достижении
+      # 80 и дерётся с LevelBrackets, который пытается удержать 11% на капе.
+      "AiPlayerbot.ResetBotLevel.Enabled"                        = "1";
+      "AiPlayerbot.ResetBotLevel.MaxLevel"                       = "80";
+      "AiPlayerbot.ResetBotLevel.ResetToLevel"                   = "1";
+      "AiPlayerbot.ResetBotLevel.ResetChance"                    = "100";
+      "AiPlayerbot.ResetBotLevel.RestrictTimePlayed"             = "1";
+      "AiPlayerbot.ResetBotLevel.MinTimePlayed"                  = "604800"; # неделя на капе
+      "AiPlayerbot.ResetBotLevel.PlayedTimeCheckFrequency"       = "6048";   # 1% от MinTimePlayed
+      "AiPlayerbot.ResetBotLevel.IgnoreGuildBotsWithRealPlayers" = "1";
+
+      # ── Лут ────────────────────────────────────────────────────────────────
       # Боты мгновенно пасуют — roll-окна закрываются сразу, лут не пропадает по таймауту.
       # AoE-loot открывает до 16 roll-окон одновременно, боты не успевают при greed → баг.
       # Игрок роллит Need на нужные предметы; остальное уходит случайному в группе.
-      # 0=pass, 1=greed, 2=need
-      "AiPlayerbot.LootRollLevel"             = "0";
+      # (AiPlayerbot.LootRollLevel, стоявший здесь раньше, модом не читается —
+      #  такого ключа нет ни в conf.dist, ни в PlayerbotAIConfig.cpp. Убран.)
       "AiPlayerbot.LootNeedRollLevel"         = "0";  # когда бот хочет предмет — всё равно пасует
-      # Без initial gear — лутают и одеваются сами
-      "AiPlayerbot.RandomGearQualityLimit"    = "0";
-      "AiPlayerbot.IncrementalGearInit"       = "0";
+
+      # ── Экипировка ─────────────────────────────────────────────────────────
+      # Раньше здесь стоял RandomGearQualityLimit = 0, что уходит прямо в фабрику как
+      # потолок качества (itemQuality = 0 = «серое») — боты 70-го бегали голыми и
+      # разваливали группы. Теперь боты одеты заметно выше среднего:
+      "AiPlayerbot.RandomGearQualityLimit"    = "4";   # до эпиков (дефолт мода — 3, синь)
+      # …но не в лучшем рейд-луте: потолок ilvl 213 = уровень Наксрамаса-25.
+      # Боты 80-го готовы идти в Ульдуар/ToC/ICC, но не одеты лучше, чем оттуда падает.
+      # Поставь 0, если хочешь снять ограничение совсем.
+      "AiPlayerbot.RandomGearScoreLimit"      = "213";
+      "AiPlayerbot.RandomGearLoweringChance"  = "0";   # без нарочно ухудшенных комплектов
+      # Броня по классу (×3 к оценке подходящего типа) и оружие по спеку —
+      # больше никакой кожи на паладине и быстрых двуручей у армса.
+      "AiPlayerbot.PreferClassArmorType"      = "1";
+      "AiPlayerbot.PreferredSpecWeapons"      = "1";
+      # Боты сохраняют нажитое между перелогами вместо перегенерации комплекта.
+      "AiPlayerbot.EquipAndSpecPersistence"   = "1";
+      "AiPlayerbot.AutoUpgradeEquip"          = "1";
       "AiPlayerbot.AutoEquipUpgradeLoot"      = "1";
-      "AiPlayerbot.RandomBotAllianceRatio"    = "50";
-      "AiPlayerbot.RandomBotHordeRatio"       = "50";
+      # (AiPlayerbot.IncrementalGearInit удалён апстримом — ключ больше не существует.)
     };
 
-    worldserver.extraSettings = {
-      # AutoBalance — подземелья не становятся тривиально лёгкими
+    # AutoBalance — подземелья не становятся тривиально лёгкими.
+    # Ключи живут здесь, а не в extraSettings: AutoBalance.conf грузится после
+    # worldserver.conf, и его дефолты перебили бы любое значение оттуда.
+    worldserver.autobalanceSettings = {
       "AutoBalance.InflectionPoint.CurveFloor"             = "0.75";  # 5-чел данж: минимум 75% статов
       "AutoBalance.InflectionPointHeroic.CurveFloor"       = "0.75";
       "AutoBalance.InflectionPointRaid.CurveFloor"         = "0.75";
@@ -155,7 +210,9 @@
       "AutoBalance.InflectionPointRaid.BossModifier"       = "1.2";
       "AutoBalance.InflectionPointRaidHeroic.BossModifier" = "1.2";
       "AutoBalance.playerCountDifficultyOffset"            = "1";    # +1 фантомный игрок
+    };
 
+    worldserver.extraSettings = {
       # mod-random-enchants — отключаем ограничитель статов (не используется)
       "Stats.Limits.Enable" = "0";
 

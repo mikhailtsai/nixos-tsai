@@ -19,8 +19,13 @@
 , fetchFromGitHub
 , variant        ? "npcbots"
 , extraMods      ? []
-, playberbotConf ? ""   # дополнительные строки для etc/modules/playerbots.conf (последнее значение выигрывает)
-, ahbotConf     ? ""   # дополнительные строки для etc/modules/mod_ahbot.conf
+  # Патчи конфигов модов: { "playerbots.conf" = "Ключ = значение\n..."; ... }
+  #
+  # ВАЖНО: настройки модов обязаны лежать именно здесь, а не в worldserver.conf.
+  # ConfigMgr::AddKey стирает и переустанавливает ключ, а etc/modules/*.conf
+  # грузятся ПОСЛЕ worldserver.conf — то есть дефолт из конфига мода перебьёт
+  # любое одноимённое значение, выставленное в worldserver.conf.
+, moduleConfs    ? {}
 }:
 
 let
@@ -46,19 +51,20 @@ let
     playerbots = fetchFromGitHub {
       owner = "mod-playerbots";
       repo  = "azerothcore-wotlk";
-      rev   = "621e09c3be08735fb336a93590e69b9039c942ca"; # branch Playerbot 2026-04-10
-      hash  = "sha256-X2IwTkt6Wpvd0ivIhO5Pe+02hYh9ar90iH4BqiNkJ1g=";
+      rev   = "47960183bb03b83e8943eb2f0f39c16df9710c9d"; # branch Playerbot 2026-08-28
+      hash  = "sha256-5b4czSFbhNK9eIkjX8rBjj5GyvVSS3FQhg/m0wFzS/M=";
       fetchSubmodules = true;
     };
 
   }.${variant};
 
-  # Для варианта playerbots — сам мод добавляется автоматически
+  # Для варианта playerbots — сам мод добавляется автоматически.
+  # Репозиторий переехал из liyunfan1223 в организацию mod-playerbots (старый путь редиректит).
   playerbotsModSrc = fetchFromGitHub {
-    owner = "liyunfan1223";
+    owner = "mod-playerbots";
     repo  = "mod-playerbots";
-    rev   = "9fa03dc83f204d9e8b2d4885f1228a76310ccaef"; # 2026-04-10
-    hash  = "sha256-0O9zAXtpOTRMfF8QN5Bkdc2e/qplU6c89Y+d0n2OrSE=";
+    rev   = "2f7d9f774987d0157c6a0d0cc08c40bec3db3945"; # 2026-08-24
+    hash  = "sha256-WB96YV1cXWcWxGClpmVMSjDpo/9274iGvFct2OKaUMw=";
   };
 
   allMods = extraMods
@@ -69,7 +75,8 @@ let
 
 in stdenv.mkDerivation {
   pname   = "azerothcore";
-  version = "2026-03-15-${variant}";
+  # Дата пиннутой ревизии выбранного варианта (см. baseSrc выше)
+  version = (if variant == "playerbots" then "2026-08-28" else "2026-03-15") + "-${variant}";
 
   src = baseSrc;
 
@@ -131,22 +138,25 @@ in stdenv.mkDerivation {
         if grep -q "^[[:space:]]*$escaped_key[[:space:]]*=" "$conf"; then
           sed -i "s|^[[:space:]]*$escaped_key[[:space:]]*=.*|$key = $escaped_value|" "$conf"
         else
+          # Ключа нет в .conf.dist. Обычно это опечатка: мод такой ключ не читает,
+          # и настройка молча ляжет в конец файла мёртвым грузом (так было с
+          # AiPlayerbot.LootRollLevel). Дописываем, но громко предупреждаем.
+          echo "WARNING: $(basename "$conf"): ключа '$key' нет в .conf.dist — опечатка?" >&2
           echo "$key = $value" >> "$conf"
         fi
       done
     }
 
-    ${lib.optionalString (ahbotConf != "") ''
-      patch_conf $out/etc/modules/mod_ahbot.conf << 'AHBOT_EOF'
-${ahbotConf}
-AHBOT_EOF
-    ''}
-
-    ${lib.optionalString (playberbotConf != "") ''
-      patch_conf $out/etc/modules/playerbots.conf << 'PLAYBERBOTS_EOF'
-${playberbotConf}
-PLAYBERBOTS_EOF
-    ''}
+    ${lib.concatStrings (lib.mapAttrsToList (file: lines:
+      lib.optionalString (lines != "") ''
+        if [ ! -f "$out/etc/modules/${file}" ]; then
+          echo "ERROR: нет $out/etc/modules/${file} — мод не собран, но его настройки заданы" >&2
+          exit 1
+        fi
+        patch_conf $out/etc/modules/${file} << 'MODCONF_EOF'
+${lines}
+MODCONF_EOF
+      '') moduleConfs)}
   '';
 
   meta = {

@@ -7,7 +7,7 @@ set -e
 fetch() {
   local owner=$1 repo=$2 rev=$3
   echo -n "  ${owner}/${repo} ... "
-  nix-prefetch-github --prefetch-submodules "$owner" "$repo" --rev "$rev" 2>/dev/null \
+  nix-prefetch-github --fetch-submodules "$owner" "$repo" --rev "$rev" 2>/dev/null \
     | nix hash convert --hash-algo sha256 --from base32 2>/dev/null \
     || nix-prefetch-github "$owner" "$repo" --rev "$rev" 2>/dev/null | grep '"sha256"' | awk -F'"' '{print $4}'
   echo ""
@@ -18,7 +18,7 @@ prefetch() {
   local owner=$1 repo=$2 rev=$3 subs=${4:-false}
   echo -n "  ${repo}: "
   if [ "$subs" = "true" ]; then
-    nix-prefetch-github --prefetch-submodules "$owner" "$repo" --rev "$rev" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['hash'])" 2>/dev/null || echo "ERROR — запусти вручную: nix-prefetch-github --prefetch-submodules $owner $repo --rev $rev"
+    nix-prefetch-github --fetch-submodules "$owner" "$repo" --rev "$rev" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['hash'])" 2>/dev/null || echo "ERROR — запусти вручную: nix-prefetch-github --fetch-submodules $owner $repo --rev $rev"
   else
     nix-prefetch-github "$owner" "$repo" --rev "$rev" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['hash'])" 2>/dev/null || echo "ERROR — запусти вручную: nix-prefetch-github $owner $repo --rev $rev"
   fi
@@ -31,9 +31,9 @@ prefetch azerothcore azerothcore-wotlk b87240941155ec103c1b5881ea9a2ce5ae784660 
 echo "# npcbots fork:"
 prefetch trickerer AzerothCore-wotlk-with-NPCBots 84b2261dd3f18a59106277d86e0960d65ba71c97 true
 echo "# playerbots fork:"
-prefetch mod-playerbots azerothcore-wotlk 113536cd2b2b72060497897921d028301a915a6a true
+prefetch mod-playerbots azerothcore-wotlk 47960183bb03b83e8943eb2f0f39c16df9710c9d true
 echo "# mod-playerbots module:"
-prefetch liyunfan1223 mod-playerbots 299e4398da1502420bca20ac24a936b244f62183 false
+prefetch mod-playerbots mod-playerbots 2f7d9f774987d0157c6a0d0cc08c40bec3db3945 false
 
 echo ""
 echo "=== Хэши для default.nix (моды) ==="

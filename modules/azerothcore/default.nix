@@ -121,8 +121,16 @@ let
   package = pkgs.callPackage ./package.nix {
     inherit (cfg) variant;
     extraMods      = enabledMods;
-    playberbotConf = extraLines cfg.worldserver.playerbots;
-    ahbotConf      = lib.optionalString cfg.mods.ahbot (extraLines cfg.worldserver.ahbotSettings);
+    # Настройки модов идут в etc/modules/*.conf, а НЕ в worldserver.conf:
+    # конфиги модов грузятся последними и перебивают одноимённые ключи оттуда.
+    moduleConfs = lib.filterAttrs (_: v: v != "") {
+      "playerbots.conf"  = lib.optionalString (cfg.variant == "playerbots")
+                             (extraLines cfg.worldserver.playerbots);
+      "mod_ahbot.conf"   = lib.optionalString cfg.mods.ahbot
+                             (extraLines cfg.worldserver.ahbotSettings);
+      "AutoBalance.conf" = lib.optionalString cfg.mods.autobalance
+                             (extraLines cfg.worldserver.autobalanceSettings);
+    };
   };
 
   # ── Генерация конфигов ────────────────────────────────────────────────────
@@ -318,6 +326,21 @@ in {
         '';
       };
 
+      autobalanceSettings = lib.mkOption {
+        type        = lib.types.attrsOf lib.types.str;
+        default     = {};
+        description = ''
+          Настройки AutoBalance.conf. Задавать их в extraSettings бесполезно:
+          etc/modules/*.conf грузятся после worldserver.conf и перебивают его.
+        '';
+        example     = lib.literalExpression ''
+          {
+            "AutoBalance.InflectionPoint.CurveFloor" = "0.75";
+            "AutoBalance.playerCountDifficultyOffset" = "1";
+          }
+        '';
+      };
+
       ahbotSettings = lib.mkOption {
         type        = lib.types.attrsOf lib.types.str;
         default     = {};
@@ -402,9 +425,25 @@ in {
           # AzerothCore не применяет base/ SQL модов автоматически — делаем здесь.
           # Все скрипты идемпотентны (IF NOT EXISTS / DELETE+INSERT).
           # Стандартная структура: modules/<mod>/data/sql/db-{world,characters,auth}/
+          # Применяем файл и СРАЗУ отмечаем его в таблице `updates` той же БД.
+          #
+          # Иначе апдейтер worldserver'а (он с версии 2026-08 сам сканирует
+          # modules/*/data/sql/) увидит файл незарегистрированным и попробует
+          # применить повторно. На файлах с голым `CREATE TABLE` — например
+          # AHBot/auctionhousebot_professionItems.sql — это падает с
+          # «ERROR 1050: Table already exists», и сервер отказывается стартовать.
+          # Формат записи тот же, что пишет ядро: имя файла + SHA1 в верхнем
+          # регистре + state=MODULE.
           apply_sql() {
             local db=$1 file=$2
+            local name hash
+            name=$(${pkgs.coreutils}/bin/basename "$file")
+            hash=$(${pkgs.coreutils}/bin/sha1sum "$file" | ${pkgs.coreutils}/bin/cut -d' ' -f1 | ${pkgs.coreutils}/bin/tr 'a-f' 'A-F')
             ${mysqlC} "$db" < "$file" || true
+            ${mysqlC} "$db" -e "
+              INSERT INTO updates (name, hash, state, speed) VALUES ('$name', '$hash', 'MODULE', 0)
+              ON DUPLICATE KEY UPDATE hash = VALUES(hash), state = 'MODULE';
+            " || true
           }
 
           find "${modDir}" -path "*/db-world/*.sql"      ! -path "*/updates/*" | sort | while read f; do apply_sql ${dbs.world}      "$f"; done

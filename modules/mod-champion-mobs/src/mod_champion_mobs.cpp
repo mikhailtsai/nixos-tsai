@@ -22,7 +22,7 @@
  *   - Skips pets, summons, totems, non-attackable units
  *   - Skips Alliance/Horde faction NPCs
  *   - Only beast, dragonkin, demon, elemental, giant, undead, humanoid, mechanical
- *   - Level >= 15 (legendary: level >= 40)
+ *   - Level >= 2 (legendary: level >= 40)
  */
 
 #include "ScriptMgr.h"
@@ -494,7 +494,7 @@ static void RevertChampion(Creature* c)
 
     c->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_ONESHOT_NONE);
 
-    LOG_INFO("module", "mod-champion-mobs: {} reverted to normal (solo bot attack)", c->GetName());
+    LOG_DEBUG("module", "mod-champion-mobs: {} reverted to normal (solo bot attack)", c->GetName());
 }
 
 static void SetAggroSoundTimer(Creature const* c, uint32 ms)
@@ -953,7 +953,7 @@ public:
                 "A true legend walks the land \xe2\x80\x94 great glory awaits the brave!";
             AnnounceNearby(c, 150.0f, msg);
 
-            LOG_INFO("module", "mod-champion-mobs: {} LEGENDARY (entry={} guid={:#x} lvl={})",
+            LOG_DEBUG("module", "mod-champion-mobs: {} LEGENDARY (entry={} guid={:#x} lvl={})",
                 c->GetName(), c->GetEntry(), c->GetGUID().GetRawValue(), c->GetLevel());
         }
         else
@@ -965,7 +965,7 @@ public:
             AnnounceNearby(c, 80.0f, msg);
             c->PlayDirectSound(SOUND_CHAMPION_ROAR);
 
-            LOG_INFO("module", "mod-champion-mobs: {} champion (entry={} guid={:#x} lvl={})",
+            LOG_DEBUG("module", "mod-champion-mobs: {} champion (entry={} guid={:#x} lvl={})",
                 c->GetName(), c->GetEntry(), c->GetGUID().GetRawValue(), c->GetLevel());
         }
     }
