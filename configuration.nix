@@ -103,10 +103,12 @@
     supplementaryGroups = [ "leet" ];
 
     mods = {
-      # Настройки AutoBalance.* лежат в worldserver.extraSettings ниже — до 31 авг 2026
-      # мод был выключен, и все они молча игнорировались. Включаем, чтобы данжи
-      # подстраивались под размер группы (у нас группы набираются ботами разных уровней).
-      autobalance = true;
+      # Не включать. Пробовали 31 авг 2026 и сразу выключили: помимо желаемого
+      # масштабирования статов мод по умолчанию тянет AutoBalance.LevelScaling=1,
+      # который подгоняет УРОВНИ мобов в подземельях под группу. Это меняет
+      # ощущение от игры сильнее, чем хотелось. Настройки кривых сложности,
+      # которые под него готовились, — в истории git (коммит 75232e7).
+      autobalance = false;
       ahbot       = true;   # бот аукционного дома
       aoeLoot        = false;
       transmog       = true;    # трансмогрификация внешнего вида
@@ -197,20 +199,9 @@
       # (AiPlayerbot.IncrementalGearInit удалён апстримом — ключ больше не существует.)
     };
 
-    # AutoBalance — подземелья не становятся тривиально лёгкими.
-    # Ключи живут здесь, а не в extraSettings: AutoBalance.conf грузится после
-    # worldserver.conf, и его дефолты перебили бы любое значение оттуда.
-    worldserver.autobalanceSettings = {
-      "AutoBalance.InflectionPoint.CurveFloor"             = "0.75";  # 5-чел данж: минимум 75% статов
-      "AutoBalance.InflectionPointHeroic.CurveFloor"       = "0.75";
-      "AutoBalance.InflectionPointRaid.CurveFloor"         = "0.75";
-      "AutoBalance.InflectionPointRaidHeroic.CurveFloor"   = "0.75";
-      "AutoBalance.InflectionPoint.BossModifier"           = "1.2";  # боссы масштабируются медленнее
-      "AutoBalance.InflectionPointHeroic.BossModifier"     = "1.2";
-      "AutoBalance.InflectionPointRaid.BossModifier"       = "1.2";
-      "AutoBalance.InflectionPointRaidHeroic.BossModifier" = "1.2";
-      "AutoBalance.playerCountDifficultyOffset"            = "1";    # +1 фантомный игрок
-    };
+    # worldserver.autobalanceSettings намеренно пуст — мод выключен (см. mods выше).
+    # Если когда-нибудь понадобится, обязательно задать здесь же
+    # AutoBalance.LevelScaling = "0", иначе приедет масштабирование уровней.
 
     worldserver.extraSettings = {
       # mod-random-enchants — отключаем ограничитель статов (не используется)
