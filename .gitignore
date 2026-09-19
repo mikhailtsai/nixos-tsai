@@ -6,6 +6,7 @@
 # Артефакт nixos-rebuild build / nix build — симлинк в /nix/store
 result
 result-*
+pkgs.root/
 
 # Секреты: в git только публичный CA-сертификат
 secrets/*

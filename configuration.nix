@@ -16,6 +16,7 @@
     ./modules/home-dashboard.nix  # Веб-панель управления сервисами на https://home.tsai
     ./modules/vikunja.nix  # Vikunja (self-hosted таск-менеджер) на https://tasks.tsai + MCP
     ./modules/azerothcore  # WoW WotLK 3.3.5a private server (выключен пока enable = false)
+    ./modules/l2solo  # Lineage II C4 L2Solo emulator
   ];
 
   nix.settings = {
@@ -27,6 +28,7 @@
   nixpkgs.config.android_sdk.accept_license = true; # для androidenv (Flutter/Android SDK)
   nixpkgs.config.permittedInsecurePackages = [
     "electron-39.8.10" # bitwarden-desktop пока не обновился до нового electron
+    "nwjs-0.102.1"     # nwjs тащит старый Chrome 139; апстрим не обновлялся
   ];
   programs.ssh.startAgent = true;
 
@@ -197,6 +199,84 @@
       "AiPlayerbot.AutoUpgradeEquip"          = "1";
       "AiPlayerbot.AutoEquipUpgradeLoot"      = "1";
       # (AiPlayerbot.IncrementalGearInit удалён апстримом — ключ больше не существует.)
+
+      # ── Чат ────────────────────────────────────────────────────────────────
+      # Штатная болтовня playerbots: конечный набор захардкоженных фраз, но
+      # разнообразных и без единой внешней зависимости. Раньше здесь всё было
+      # заглушено ради mod-ollama-chat; мод убран, всё возвращено и раскручено.
+      # Значения шансов вещания — в диапазоне 0..30000 (так задумано модом).
+      "AiPlayerbot.RandomBotTalk"             = "1";
+      "AiPlayerbot.RandomBotEmote"            = "1";   # боты ещё и жестикулируют
+      "AiPlayerbot.RandomBotSuggestDungeons"  = "1";
+      "AiPlayerbot.EnableGreet"               = "1";   # здороваются при приглашении
+      "AIPlayerbot.GuildFeedback"             = "1";   # регистр «AI» — так в conf.dist
+      "AiPlayerbot.GuildRepliesRate"          = "100";
+      # Ключевое для оживления: без этого говорят только боты, у которых есть
+      # хозяин, то есть в мире стоит тишина.
+      "AiPlayerbot.RandomBotSayWithoutMaster" = "1";
+      "AiPlayerbot.EnableBroadcasts"          = "1";
+
+      # Перепалки: боты отвечают на ссылки-подколы и на Громовую Ярость.
+      "AiPlayerbot.ToxicLinksRepliesChance"   = "50";
+      "AiPlayerbot.ThunderfuryRepliesChance"  = "60";
+
+      # ── Куда вещать ────────────────────────────────────────────────────────
+      # Все каналы на максимум: чем больше площадок, тем живее мир.
+      "AiPlayerbot.BroadcastToGuildGlobalChance"            = "30000";
+      "AiPlayerbot.BroadcastToWorldGlobalChance"            = "30000";
+      "AiPlayerbot.BroadcastToGeneralGlobalChance"          = "30000";
+      "AiPlayerbot.BroadcastToTradeGlobalChance"            = "30000";
+      "AiPlayerbot.BroadcastToLFGGlobalChance"              = "30000";
+      "AiPlayerbot.BroadcastToLocalDefenseGlobalChance"     = "30000";
+      "AiPlayerbot.BroadcastToWorldDefenseGlobalChance"     = "30000";
+      "AiPlayerbot.BroadcastToGuildRecruitmentGlobalChance" = "30000";
+
+      # ── О чём вещать ───────────────────────────────────────────────────────
+      # Лут: серое и белое оставляем редким, иначе чат утонет в «поднял тряпку».
+      # Начиная с зелёного — щедро, это как раз те находки, о которых хвастаются.
+      "AiPlayerbot.BroadcastChanceLootingItemPoor"      = "60";
+      "AiPlayerbot.BroadcastChanceLootingItemNormal"    = "400";
+      "AiPlayerbot.BroadcastChanceLootingItemUncommon"  = "15000";
+      "AiPlayerbot.BroadcastChanceLootingItemRare"      = "25000";
+      "AiPlayerbot.BroadcastChanceLootingItemEpic"      = "30000";
+      "AiPlayerbot.BroadcastChanceLootingItemLegendary" = "30000";
+      "AiPlayerbot.BroadcastChanceLootingItemArtifact"  = "30000";
+
+      # Квесты: взял, продвинулся, сдал.
+      "AiPlayerbot.BroadcastChanceQuestAccepted"                  = "10000";
+      "AiPlayerbot.BroadcastChanceQuestUpdateObjectiveCompleted"  = "1500";
+      "AiPlayerbot.BroadcastChanceQuestUpdateObjectiveProgress"   = "600";
+      "AiPlayerbot.BroadcastChanceQuestUpdateFailedTimer"         = "3000";
+      "AiPlayerbot.BroadcastChanceQuestUpdateComplete"            = "6000";
+      "AiPlayerbot.BroadcastChanceQuestTurnedIn"                  = "15000";
+
+      # Убийства: рядовых мобов почти не комментируем, редких и боссов — всегда.
+      "AiPlayerbot.BroadcastChanceKillNormal"    = "120";
+      "AiPlayerbot.BroadcastChanceKillElite"     = "1500";
+      "AiPlayerbot.BroadcastChanceKillRareelite" = "8000";
+      "AiPlayerbot.BroadcastChanceKillRare"      = "15000";
+      "AiPlayerbot.BroadcastChanceKillWorldboss" = "30000";
+      "AiPlayerbot.BroadcastChanceKillUnknown"   = "300";
+      "AiPlayerbot.BroadcastChanceKillPet"       = "60";
+      "AiPlayerbot.BroadcastChanceKillPlayer"    = "20000";  # ПвП — повод поорать
+
+      # Уровни.
+      "AiPlayerbot.BroadcastChanceLevelupGeneric"  = "25000";
+      "AiPlayerbot.BroadcastChanceLevelupTenX"     = "30000";
+      "AiPlayerbot.BroadcastChanceLevelupMaxLevel" = "30000";
+
+      # Предложения и трёп — то, что больше всего похоже на живой чат.
+      "AiPlayerbot.BroadcastChanceSuggestInstance"        = "12000";
+      "AiPlayerbot.BroadcastChanceSuggestQuest"           = "15000";
+      "AiPlayerbot.BroadcastChanceSuggestGrindMaterials"  = "10000";
+      "AiPlayerbot.BroadcastChanceSuggestGrindReputation" = "10000";
+      "AiPlayerbot.BroadcastChanceSuggestSell"            = "1000";
+      "AiPlayerbot.BroadcastChanceSuggestSomething"       = "30000";
+      "AiPlayerbot.BroadcastChanceGuildManagement"        = "30000";
+      # Подколы и мемы — ты просил повеселее и без цензуры.
+      "AiPlayerbot.BroadcastChanceSuggestSomethingToxic"  = "12000";
+      "AiPlayerbot.BroadcastChanceSuggestToxicLinks"      = "8000";
+      "AiPlayerbot.BroadcastChanceSuggestThunderfury"     = "300";
     };
 
     # worldserver.autobalanceSettings намеренно пуст — мод выключен (см. mods выше).
@@ -217,7 +297,6 @@
       "Corpse.Decay.ELITE"     = "600";   # элитные: 10 мин
       "Corpse.Decay.RAREELITE" = "600";   # редко-элитные: 10 мин
     };
-
     worldserver.ahbotSettings = {
       "AuctionHouseBot.EnableSeller"                   = "1";
       "AuctionHouseBot.EnableBuyer"                    = "1";
@@ -243,6 +322,7 @@
       "AuctionHouseBot.DisableBOP_Or_Quest_NoReqLevel" = "1";
     };
   };
+
 
   # ── Управление AzerothCore без пароля (для waybar-кнопки) ───────────────────
   security.sudo.extraRules = [{
@@ -287,6 +367,13 @@
   # они видны только по обрывкам pstore. Демон пишет их в БД — при повторе сбоя
   # будет нормальная картина: `ras-mc-ctl --summary`, `ras-mc-ctl --errors`.
   hardware.rasdaemon.enable = true;
+
+
+  # ── L2Solo Lineage II Chronicle 4 (Scions of Destiny) ─────────────────────
+  services.l2solo = {
+    enable = true;
+    openFirewall = true;
+  };
 
   system.stateVersion = "25.11";
 }

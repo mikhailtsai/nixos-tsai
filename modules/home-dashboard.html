@@ -20,6 +20,10 @@
     <span class="tab-glyph">⚔</span> WoW server
     <span class="tab-dot" id="tabDotWow"></span>
   </button>
+  <button class="tab" role="tab" data-tab="l2" aria-selected="false">
+    <span class="tab-glyph">🛡</span> Lineage II
+    <span class="tab-dot" id="tabDotL2"></span>
+  </button>
   <button class="tab" role="tab" data-tab="penpot" aria-selected="false">
     <span class="tab-glyph">◈</span> Penpot
     <span class="tab-dot" id="tabDotPenpot"></span>
@@ -60,6 +64,38 @@
       <button class="btn btn-primary" data-action="wow-start">Запустить</button>
       <button class="btn" data-action="wow-restart" data-confirm="Перезапустить WoW-сервер? Игроки будут отключены.">Перезапустить</button>
       <button class="btn btn-danger" data-action="wow-stop" data-confirm="Остановить WoW-сервер? Игроки будут отключены.">Остановить</button>
+    </div>
+  </section>
+
+  <!-- ── Lineage II (L2Solo) ─────────────────────────────────────────── -->
+  <section class="panel" id="panel-l2" role="tabpanel" hidden>
+    <div class="hero">
+      <div class="hero-status">
+        <span class="status-dot" id="l2Dot"></span>
+        <div>
+          <div class="status-label" id="l2State">—</div>
+          <div class="status-desc" id="l2Desc">L2Solo · C4 Scions of Destiny (x7)</div>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <span class="metric-key">Uptime</span>
+          <span class="metric-val" id="l2Uptime">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-key">Память</span>
+          <span class="metric-val" id="l2Mem">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-key">Карта мира</span>
+          <a class="metric-val metric-link" href="http://192.168.1.57:8089/observer/" target="_blank" rel="noopener">WorldObserver&nbsp;↗</a>
+        </div>
+      </div>
+    </div>
+    <div class="actions" id="l2Actions">
+      <button class="btn btn-primary" data-action="l2-start">Запустить</button>
+      <button class="btn" data-action="l2-restart" data-confirm="Перезапустить Lineage II сервер? Игроки и боты будут отключены.">Перезапустить</button>
+      <button class="btn btn-danger" data-action="l2-stop" data-confirm="Остановить Lineage II сервер? Игроки и боты будут отключены.">Остановить</button>
     </div>
   </section>
 
@@ -298,7 +334,7 @@
   .chip {
     display: inline-flex; align-items: center; gap: 7px;
     font-family: var(--font-mono); font-size: 12px; color: var(--text-2);
-    padding: 6px 11px; border-radius: var(--r-full);
+    padding: 5px 10px; border-radius: var(--r-sm);
     background: var(--surface-2); border: 1px solid var(--border-subtle);
   }
   .chip-dot {
@@ -306,63 +342,54 @@
     background: var(--text-disabled); flex: none;
   }
   .chip-dot.on { background: var(--success); }
-  .chip-dot.off { background: var(--danger); }
+  .chip-dot.off { background: var(--text-disabled); }
 
   /* ── actions ── */
-  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .actions {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px;
+  }
   .btn {
-    font-family: inherit; font-size: 14px; font-weight: 550; letter-spacing: -0.01em;
-    color: var(--text); cursor: pointer;
-    padding: 11px 20px; border-radius: var(--r-sm);
-    background: var(--surface-2); border: 1px solid var(--border);
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    padding: 9px 16px; border-radius: var(--r-sm);
+    border: 1px solid var(--border); color: var(--text);
+    background: var(--surface-2); cursor: pointer;
     box-shadow: inset 0 1px 0 var(--highlight-top);
-    transition: transform 140ms cubic-bezier(0.2,0.8,0.2,1), border-color 140ms, background 140ms, opacity 140ms;
+    transition: background 140ms, border-color 140ms, transform 80ms, opacity 140ms;
   }
-  .btn:hover { transform: translateY(-1px); border-color: var(--border-strong); background: var(--surface-3); }
-  .btn:active { transform: translateY(0); }
-  .btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
-  .btn-primary {
-    background: linear-gradient(180deg, var(--accent-hover), var(--accent-press));
-    border-color: transparent; color: #fff;
-  }
-  .btn-primary:hover { background: linear-gradient(180deg, #9a80ff, var(--accent)); border-color: transparent; }
-  .btn-danger { color: #ff9ea0; }
-  .btn-danger:hover { border-color: var(--danger); background: var(--danger-quiet); color: #ffb3b5; }
-  .btn[disabled] { opacity: 0.5; pointer-events: none; }
-  .btn.busy { position: relative; color: transparent; }
-  .btn.busy::after {
-    content: ""; position: absolute; inset: 0; margin: auto;
-    width: 15px; height: 15px; border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  .btn:hover:not(:disabled) { background: var(--surface-3); border-color: var(--border-strong); }
+  .btn:active:not(:disabled) { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.busy { opacity: 0.7; position: relative; }
 
-  /* ── toasts ── */
+  .btn-primary {
+    background: var(--accent); border-color: transparent; color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px var(--accent-glow);
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-primary:active:not(:disabled) { background: var(--accent-press); }
+
+  .btn-danger { color: var(--danger); border-color: rgba(229,72,77,0.25); }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--danger-quiet); border-color: var(--danger);
+  }
+
+  /* ── toast feedback ── */
   .toast-wrap {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    display: flex; flex-direction: column; gap: 8px; z-index: 10; width: min(92vw, 420px);
+    position: fixed; bottom: 24px; right: 24px;
+    display: flex; flex-direction: column; gap: 8px; z-index: 99;
+    pointer-events: none;
   }
   .toast {
-    display: flex; align-items: center; gap: 10px;
-    padding: 12px 16px; border-radius: var(--r-md);
-    background: rgba(28,28,32,0.72); backdrop-filter: blur(24px) saturate(1.3);
-    -webkit-backdrop-filter: blur(24px) saturate(1.3);
-    border: 1px solid var(--border); font-size: 13px; color: var(--text);
-    box-shadow: var(--elev-3), inset 0 1px 0 var(--highlight-top);
-    animation: toastin 240ms cubic-bezier(0.2,0.8,0.2,1);
+    font-size: 13px; padding: 10px 14px; border-radius: var(--r-sm);
+    background: var(--surface-2); border: 1px solid var(--border-strong);
+    box-shadow: var(--elev-3); color: var(--text);
+    animation: toast-in 180ms ease-out;
   }
-  .toast::before { content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none; }
-  .toast.ok::before { background: var(--success); }
-  .toast.err::before { background: var(--danger); }
-  @keyframes toastin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-
-  @media (max-width: 480px) {
-    .brand-sub { display: none; }
-    .status-label { font-size: 22px; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  .toast.ok { border-color: var(--success); }
+  .toast.err { border-color: var(--danger); }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
   }
 </style>
 
@@ -385,6 +412,7 @@
     }
 
     function setDot(el, cls) {
+      if (!el) return;
       el.className = el.className.replace(/\b(on|off|warn)\b/g, "").trim() + " " + cls;
     }
 
@@ -405,6 +433,23 @@
       // во время запуска/остановки показываем стоп/перезапуск (старт прячем)
       toggleActions("wowActions", st === "active" || busy);
       if (busy) boost();
+
+      // Lineage II (L2Solo)
+      var l = d.l2;
+      if (l) {
+        var lst = l.astate, llabel, ldot, lbusy = (lst === "activating" || lst === "deactivating");
+        if (lst === "active")            { llabel = "Запущен";          ldot = "on"; }
+        else if (lst === "activating")   { llabel = "Запускается…";     ldot = "warn"; }
+        else if (lst === "deactivating") { llabel = "Останавливается…"; ldot = "warn"; }
+        else if (lst === "failed")       { llabel = "Ошибка запуска";   ldot = "off"; }
+        else                             { llabel = "Остановлен";       ldot = "off"; }
+        document.getElementById("l2State").textContent = llabel;
+        setDot(document.getElementById("l2Dot"), ldot);
+        setDot(document.getElementById("tabDotL2"), ldot);
+        document.getElementById("l2Mem").textContent = l.mem_mb ? l.mem_mb + " МБ" : "—";
+        toggleActions("l2Actions", lst === "active" || lbusy);
+        if (lbusy) boost();
+      }
 
       // Penpot
       var p = d.penpot;
@@ -436,8 +481,8 @@
       }).join("");
 
       // общий индикатор здоровья
-      var okAll = w.active && all && vall;
-      var anyUp = w.active || p.up || v.up;
+      var okAll = w.active && (l ? l.active : true) && all && vall;
+      var anyUp = w.active || (l ? l.active : false) || p.up || v.up;
       var hd = document.getElementById("healthDot");
       hd.style.background = okAll ? "var(--success)" : anyUp ? "var(--warning)" : "var(--text-3)";
       document.getElementById("healthText").textContent =
@@ -446,6 +491,7 @@
 
     function toggleActions(id, running) {
       var box = document.getElementById(id);
+      if (!box) return;
       box.querySelectorAll(".btn").forEach(function (b) {
         var a = b.dataset.action;
         var isStart = a.indexOf("start") >= 0;
@@ -454,17 +500,26 @@
     }
 
     function tick() {
-      if (!live || live.wow.uptime == null || !live.wow.active) return;
-      var extra = (Date.now() - live.at) / 1000;
-      document.getElementById("wowUptime").textContent = fmtUptime(live.wow.uptime + extra);
+      if (live && live.wow && live.wow.uptime != null && live.wow.active) {
+        var extra = (Date.now() - live.at) / 1000;
+        document.getElementById("wowUptime").textContent = fmtUptime(live.wow.uptime + extra);
+      }
+      if (live && live.l2 && live.l2.uptime != null && live.l2.active) {
+        var lextra = (Date.now() - live.at) / 1000;
+        document.getElementById("l2Uptime").textContent = fmtUptime(live.l2.uptime + lextra);
+      }
     }
 
     function refresh() {
       return fetch("/api/status").then(function (r) { return r.json(); }).then(function (d) {
-        live = { wow: d.wow, at: Date.now() };
+        live = { wow: d.wow, l2: d.l2, at: Date.now() };
         render(d);
         document.getElementById("wowUptime").textContent =
           d.wow.active ? fmtUptime(d.wow.uptime) : "—";
+        if (d.l2) {
+          document.getElementById("l2Uptime").textContent =
+            d.l2.active ? fmtUptime(d.l2.uptime) : "—";
+        }
       }).catch(function () {
         document.getElementById("healthText").textContent = "нет связи";
         document.getElementById("healthDot").style.background = "var(--danger)";
@@ -485,6 +540,7 @@
 
     var LABEL = {
       "wow-start": "WoW запускается…", "wow-stop": "WoW остановлен", "wow-restart": "WoW перезапускается…",
+      "l2-start": "Lineage II запускается…", "l2-stop": "Lineage II остановлен", "l2-restart": "Lineage II перезапускается…",
       "penpot-start": "Penpot запускается…", "penpot-stop": "Penpot остановлен", "penpot-restart": "Penpot перезапускается…",
       "vikunja-start": "Vikunja запускается…", "vikunja-stop": "Vikunja остановлен", "vikunja-restart": "Vikunja перезапускается…"
     };

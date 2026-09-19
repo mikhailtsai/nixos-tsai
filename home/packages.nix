@@ -74,6 +74,34 @@ let
     fi
   '';
 
+  wow-toggle = pkgs.writeShellScriptBin "wow-toggle" ''
+    if systemctl is-active --quiet azerothcore-world; then
+      sudo ${pkgs.systemd}/bin/systemctl stop azerothcore-world azerothcore-auth
+      ${pkgs.libnotify}/bin/notify-send -i dialog-error "AzerothCore" "Сервер остановлен"
+    else
+      sudo ${pkgs.systemd}/bin/systemctl start azerothcore-world azerothcore-auth
+      ${pkgs.libnotify}/bin/notify-send -i dialog-information "AzerothCore" "Сервер запущен"
+    fi
+  '';
+
+  l2-status = pkgs.writeShellScriptBin "l2-status" ''
+    if systemctl is-active --quiet l2solo; then
+      echo '{"text":"🛡 L2","class":"running","tooltip":"L2Solo (C4): запущен"}'
+    else
+      echo '{"text":"🛡 L2","class":"stopped","tooltip":"L2Solo (C4): остановлен"}'
+    fi
+  '';
+
+  l2-toggle = pkgs.writeShellScriptBin "l2-toggle" ''
+    if systemctl is-active --quiet l2solo; then
+      sudo ${pkgs.systemd}/bin/systemctl stop l2solo
+      ${pkgs.libnotify}/bin/notify-send -i dialog-error "L2Solo" "Сервер Lineage II остановлен"
+    else
+      sudo ${pkgs.systemd}/bin/systemctl start l2solo
+      ${pkgs.libnotify}/bin/notify-send -i dialog-information "L2Solo" "Сервер Lineage II запущен"
+    fi
+  '';
+
   screen-translate = pkgs.writeShellScriptBin "screen-translate" ''
     TMP_IMG=$(mktemp /tmp/screen-translate-XXXXXX.png)
     TMP_TXT=$(mktemp /tmp/screen-translate-XXXXXX)
@@ -109,16 +137,6 @@ let
     RESULT_FILE=$(mktemp /tmp/translate-result-XXXXXX)
     echo "$TRANSLATION" > "$RESULT_FILE"
     ${pkgs.kitty}/bin/kitty --class cheatsheet sh -c "cat '$RESULT_FILE'; echo; echo '--- любая клавиша чтобы закрыть ---'; read -n1; rm -f '$RESULT_FILE'"
-  '';
-
-  wow-toggle = pkgs.writeShellScriptBin "wow-toggle" ''
-    if systemctl is-active --quiet azerothcore-world; then
-      sudo ${pkgs.systemd}/bin/systemctl stop azerothcore-world azerothcore-auth
-      ${pkgs.libnotify}/bin/notify-send -i dialog-error "AzerothCore" "Сервер остановлен"
-    else
-      sudo ${pkgs.systemd}/bin/systemctl start azerothcore-world azerothcore-auth
-      ${pkgs.libnotify}/bin/notify-send -i dialog-information "AzerothCore" "Сервер запущен"
-    fi
   '';
 
   # Зашифрованное хранилище: открыть LUKS → yazi в ~/Vault → закрыть при выходе.
@@ -171,6 +189,8 @@ in
     power-menu
     wow-status
     wow-toggle
+    l2-status
+    l2-toggle
     screen-translate
     vault
   ] ++ (with pkgs; [

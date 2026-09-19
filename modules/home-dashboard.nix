@@ -5,7 +5,9 @@
 # Без пароля — доступна только по LAN (nginx слушает только name-based vhost,
 # сам бэкенд висит на 127.0.0.1). Вкладки:
 #   • WoW server (AzerothCore) — статус / вкл / выкл / перезапуск
+#   • Lineage II (L2Solo)      — статус / вкл / выкл / перезапуск
 #   • Penpot                   — статус 7 контейнеров / вкл / выкл / перезапуск
+#   • Vikunja (Tasks)          — статус контейнеров / вкл / выкл / перезапуск
 #
 # Схема (копия penpot-паттерна, тот же локальный CA → жене доверять не надо заново):
 #   dnsmasq(home.tsai→192.168.1.57) → nginx(HTTPS) → 127.0.0.1:8088 (python-бэкенд)
@@ -18,6 +20,7 @@ let
 
   # Юниты, которыми управляем/за которыми следим
   wowUnits = [ "azerothcore-world" "azerothcore-auth" ];
+  l2Units  = [ "l2solo" ];
   penpotContainers = [
     "postgres" "valkey" "backend" "exporter" "mcp" "mailcatch" "frontend"
   ];
@@ -38,14 +41,18 @@ let
   ctl = pkgs.writeShellScript "home-dashboard-ctl" ''
     set -eu
     WOW="${lib.concatStringsSep " " wowUnits}"
+    L2="${lib.concatStringsSep " " l2Units}"
     PENPOT="${lib.concatStringsSep " " penpotUnits}"
     VIKUNJA="${lib.concatStringsSep " " vikunjaUnits}"
-    # --no-block: не ждём завершения запуска (worldserver стартует долго),
+    # --no-block: не ждём завершения запуска (сервера стартуют долго),
     # UI показывает прогресс поллингом статуса.
     case "''${1:-}" in
       wow-start)       exec ${systemctl} start   --no-block $WOW ;;
       wow-stop)        exec ${systemctl} stop    --no-block $WOW ;;
       wow-restart)     exec ${systemctl} restart --no-block azerothcore-auth azerothcore-world ;;
+      l2-start)        exec ${systemctl} start   --no-block $L2 ;;
+      l2-stop)         exec ${systemctl} stop    --no-block $L2 ;;
+      l2-restart)      exec ${systemctl} restart --no-block $L2 ;;
       penpot-start)    exec ${systemctl} start   --no-block $PENPOT ;;
       penpot-stop)     exec ${systemctl} stop    --no-block $PENPOT ;;
       penpot-restart)  exec ${systemctl} restart --no-block $PENPOT ;;
@@ -66,12 +73,14 @@ let
     CTL        = "${ctl}"
     SUDO       = "/run/wrappers/bin/sudo"  # setuid-обёртка NixOS (в PATH сервиса её нет)
     WOW_UNITS  = ${builtins.toJSON wowUnits}
+    L2_UNITS   = ${builtins.toJSON l2Units}
     PENPOT     = ${builtins.toJSON (lib.zipListsWith (n: u: { name = n; unit = u; }) penpotContainers penpotUnits)}
     VIKUNJA    = ${builtins.toJSON vikunjaServices}
 
     # Разрешённые действия → аргумент ctl-обёртки
     ACTIONS = {
         "wow-start", "wow-stop", "wow-restart",
+        "l2-start", "l2-stop", "l2-restart",
         "penpot-start", "penpot-stop", "penpot-restart",
         "vikunja-start", "vikunja-stop", "vikunja-restart",
     }
@@ -134,6 +143,28 @@ let
             "auth": a.get("ActiveState") == "active",
         }
 
+        # Lineage II (L2Solo)
+        l = unit_props("l2solo")
+        l_active = l.get("ActiveState") == "active"
+        if l_active:
+            l_phase = "active"
+        elif l.get("ActiveState") == "deactivating":
+            l_phase = "deactivating"
+        elif l.get("ActiveState") == "activating":
+            l_phase = "activating"
+        elif l.get("ActiveState") == "failed":
+            l_phase = "failed"
+        else:
+            l_phase = "inactive"
+        l2 = {
+            "active": l_active,
+            "astate": l_phase,
+            "state": l.get("SubState", l.get("ActiveState", "?")),
+            "uptime": uptime_secs(l.get("ActiveEnterTimestampMonotonic", "0")),
+            "mem_mb": mem_mb(l.get("MemoryCurrent", "")) if l_active else None,
+            "observer_url": f"http://{serverIP}:8089/observer/",
+        }
+
         conts, up, mem = [], 0, 0
         for c in PENPOT:
             p = unit_props(c["unit"])
@@ -161,7 +192,7 @@ let
                            "state": p.get("SubState", p.get("ActiveState", "?"))})
         vikunja = {"up": vup, "total": len(VIKUNJA), "mem_mb": vmem or None,
                    "containers": vconts}
-        return {"wow": wow, "penpot": penpot, "vikunja": vikunja}
+        return {"wow": wow, "l2": l2, "penpot": penpot, "vikunja": vikunja}
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
