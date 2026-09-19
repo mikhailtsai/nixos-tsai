@@ -266,6 +266,18 @@
   .tab-dot {
     width: 7px; height: 7px; border-radius: var(--r-full);
     background: var(--text-disabled); flex: none;
+    transition: background 200ms ease;
+  }
+  .tab-dot.on {
+    background: var(--success);
+    box-shadow: 0 0 6px var(--success);
+  }
+  .tab-dot.warn {
+    background: var(--warning);
+    box-shadow: 0 0 6px var(--warning);
+  }
+  .tab-dot.off {
+    background: var(--text-disabled);
   }
 
   /* ── panel / card ── */

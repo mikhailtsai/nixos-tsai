@@ -162,7 +162,7 @@ let
             "state": l.get("SubState", l.get("ActiveState", "?")),
             "uptime": uptime_secs(l.get("ActiveEnterTimestampMonotonic", "0")),
             "mem_mb": mem_mb(l.get("MemoryCurrent", "")) if l_active else None,
-            "observer_url": f"http://{serverIP}:8089/observer/",
+            "observer_url": "http://${serverIP}:8089/observer/",
         }
 
         conts, up, mem = [], 0, 0
