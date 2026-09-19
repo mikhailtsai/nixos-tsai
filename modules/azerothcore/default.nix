@@ -117,21 +117,71 @@ let
     (name: _: { name = modDirNames.${name}; src = modSrcs.${name}; })
     (lib.filterAttrs (_: enabled: enabled) (lib.getAttrs (lib.attrNames modSrcs) cfg.mods));
 
-  # Собираем пакет с выбранным вариантом и модами
+  # Настройки модов идут в etc/modules/*.conf, а НЕ в worldserver.conf:
+  # конфиги модов грузятся последними и перебивают одноимённые ключи оттуда.
+  moduleConfSet = lib.filterAttrs (_: v: v != "") {
+    "playerbots.conf"  = lib.optionalString (cfg.variant == "playerbots")
+                           (extraLines cfg.worldserver.playerbots);
+    "mod_ahbot.conf"   = lib.optionalString cfg.mods.ahbot
+                           (extraLines cfg.worldserver.ahbotSettings);
+    "AutoBalance.conf" = lib.optionalString cfg.mods.autobalance
+                           (extraLines cfg.worldserver.autobalanceSettings);
+  };
+
+  # Собираем пакет с выбранным вариантом и модами.
+  #
+  # moduleConfs НАМЕРЕННО пуст. Раньше настройки запекались сюда, но postInstall
+  # входит в хеш деривации — из-за чего смена одной строчки в промпте тянула
+  # полную пересборку ядра (~час). Теперь пакет зависит только от исходников и
+  # списка модов, а значения живут в отдельной лёгкой деривации moduleConfDir.
   package = pkgs.callPackage ./package.nix {
     inherit (cfg) variant;
-    extraMods      = enabledMods;
-    # Настройки модов идут в etc/modules/*.conf, а НЕ в worldserver.conf:
-    # конфиги модов грузятся последними и перебивают одноимённые ключи оттуда.
-    moduleConfs = lib.filterAttrs (_: v: v != "") {
-      "playerbots.conf"  = lib.optionalString (cfg.variant == "playerbots")
-                             (extraLines cfg.worldserver.playerbots);
-      "mod_ahbot.conf"   = lib.optionalString cfg.mods.ahbot
-                             (extraLines cfg.worldserver.ahbotSettings);
-      "AutoBalance.conf" = lib.optionalString cfg.mods.autobalance
-                             (extraLines cfg.worldserver.autobalanceSettings);
-    };
+    extraMods   = enabledMods;
+    moduleConfs = {};
   };
+
+  # Пропатченные конфиги модов — отдельной деривацией, секунды на сборку.
+  #
+  # Сервер читает их не отсюда: ConfigMgr::GetConfigPath() на Linux возвращает
+  # _CONF_DIR, вкомпиленный cmake'ом путь вида "<пакет>/etc". Каталог из --config
+  # он игнорирует. Поэтому ниже эти файлы подсовываются юниту через
+  # BindReadOnlyPaths поверх соответствующих путей внутри пакета.
+  moduleConfDir = pkgs.runCommand "azerothcore-module-confs" { } ''
+    mkdir -p $out
+    cp ${package}/etc/modules/*.conf $out/
+    chmod u+w $out/*.conf
+
+    # Заменяем/добавляем ключи. AzerothCore берёт ПЕРВОЕ вхождение ключа,
+    # поэтому дописать в конец нельзя — надо править на месте.
+    patch_conf() {
+      local conf=$1
+      while IFS='=' read -r key value; do
+        [[ "$key" =~ ^[[:space:]]*$ || "$key" =~ ^[[:space:]]*# ]] && continue
+        key=$(echo "$key" | sed 's/[[:space:]]*$//')
+        value=$(echo "$value" | sed 's/^[[:space:]]*//')
+        escaped_key=$(printf '%s\n' "$key" | sed 's/[[\.*^$()+?{|]/\\&/g')
+        # «|» — разделитель самой sed-команды ниже, его тоже надо экранировать:
+        # некоторые моды перечисляют варианты фраз через «|» прямо в значении.
+        escaped_value=$(printf '%s\n' "$value" | sed 's/[&/\|]/\\&/g')
+        if grep -q "^[[:space:]]*$escaped_key[[:space:]]*=" "$conf"; then
+          sed -i "s|^[[:space:]]*$escaped_key[[:space:]]*=.*|$key = $escaped_value|" "$conf"
+        else
+          echo "WARNING: $(basename "$conf"): ключа '$key' нет в .conf.dist — опечатка?" >&2
+          echo "$key = $value" >> "$conf"
+        fi
+      done
+    }
+
+    ${lib.concatStrings (lib.mapAttrsToList (file: lines: ''
+      if [ ! -f "$out/${file}" ]; then
+        echo "ERROR: нет $out/${file} — мод не собран, но его настройки заданы" >&2
+        exit 1
+      fi
+      patch_conf $out/${file} << 'MODCONF_EOF'
+${lines}
+MODCONF_EOF
+    '') moduleConfSet)}
+  '';
 
   # ── Генерация конфигов ────────────────────────────────────────────────────
   # Формат строки БД: "host;port;user;password;dbname"
@@ -341,6 +391,7 @@ in {
         '';
       };
 
+
       ahbotSettings = lib.mkOption {
         type        = lib.types.attrsOf lib.types.str;
         default     = {};
@@ -455,6 +506,7 @@ in {
           find "${modDir}" -path "*/sql/world/base/*.sql"      | sort | while read f; do apply_sql ${dbs.world}      "$f"; done
           find "${modDir}" -path "*/sql/playerbots/base/*.sql" | sort | while read f; do apply_sql ${dbs.playerbots} "$f"; done
 
+
           # AHBot — переопределяем дефолты после применения SQL модов
           ${mysqlC} ${dbs.world} -e "
             UPDATE mod_auctionhousebot SET
@@ -497,9 +549,9 @@ in {
       "d ${cfg.stateDir}/tmp           0750 azerothcore azerothcore -"
       "d ${cfg.stateDir}/modules       0750 azerothcore azerothcore -"
       "L+ ${cfg.stateDir}/worldserver.conf                    - - - - ${worldserverConf}"
-      "L+ ${cfg.stateDir}/modules/playerbots.conf             - - - - ${package}/etc/modules/playerbots.conf"
+      "L+ ${cfg.stateDir}/modules/playerbots.conf             - - - - ${moduleConfDir}/playerbots.conf"
     ] ++ lib.optional cfg.mods.ahbot
-      "L+ ${cfg.stateDir}/modules/mod_ahbot.conf            - - - - ${package}/etc/modules/mod_ahbot.conf";
+      "L+ ${cfg.stateDir}/modules/mod_ahbot.conf            - - - - ${moduleConfDir}/mod_ahbot.conf";
 
     # ── Auth Server ──────────────────────────────────────────────────────────
     systemd.services.azerothcore-auth = {
@@ -540,6 +592,15 @@ in {
         LimitNOFILE     = 65536;
         PrivateTmp      = true;
         NoNewPrivileges = true;
+
+        # Подсовываем пропатченные конфиги модов поверх пакетных.
+        # Сервер жёстко читает _CONF_DIR = "<пакет>/etc", изменить путь без
+        # пересборки нельзя — зато можно подменить содержимое bind-монтом.
+        # Благодаря этому правка любой настройки мода = пересборка одной
+        # лёгкой деривации плюс рестарт сервиса, а не всего ядра.
+        BindReadOnlyPaths = lib.mapAttrsToList
+          (file: _: "${moduleConfDir}/${file}:${package}/etc/modules/${file}")
+          moduleConfSet;
 
         # ── Ограничение памяти (защита от фриза всей системы) ──────────────────
         # MemoryHigh — МЯГКИЙ порог: при превышении ядро агрессивно вытесняет

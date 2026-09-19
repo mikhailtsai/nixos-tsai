@@ -134,7 +134,9 @@ in stdenv.mkDerivation {
         key=$(echo "$key" | sed 's/[[:space:]]*$//')
         value=$(echo "$value" | sed 's/^[[:space:]]*//')
         escaped_key=$(printf '%s\n' "$key" | sed 's/[[\.*^$()+?{|]/\\&/g')
-        escaped_value=$(printf '%s\n' "$value" | sed 's/[&/\]/\\&/g')
+        # «|» — разделитель самой sed-команды ниже, его тоже надо экранировать:
+        # промпт-шаблоны mod-ollama-chat перечисляют варианты фраз через «|».
+        escaped_value=$(printf '%s\n' "$value" | sed 's/[&/\|]/\\&/g')
         if grep -q "^[[:space:]]*$escaped_key[[:space:]]*=" "$conf"; then
           sed -i "s|^[[:space:]]*$escaped_key[[:space:]]*=.*|$key = $escaped_value|" "$conf"
         else

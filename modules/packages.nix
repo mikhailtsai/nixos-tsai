@@ -133,6 +133,7 @@ in
     # -------------------------------------------------------------------------
     telegram-desktop
     discord
+    slack
     teams-for-linux
     thunderbird
 
@@ -231,7 +232,8 @@ in
     jetbrains.webstorm
     jetbrains.rider
     godot_4
-    unityhub          # Unity Hub (FHS-обёртка); сами редакторы Unity ставятся через Hub в рантайме
+    blender           # из кэша, без CUDA: Cycles на GPU не рендерит (EEVEE/вьюпорт на GPU работают)
+    unityhub         # Unity Hub (FHS-обёртка); сами редакторы Unity ставятся через Hub в рантайме
 
     # -------------------------------------------------------------------------
     # Разработка — инструменты
@@ -257,6 +259,7 @@ in
     yazi
     claude-code
     codex
+    chatgpt-desktop  # ChatGPT desktop (Chat + Work + Codex) — оф. .deb OpenAI, см. pkgs/chatgpt-desktop
 
     # -------------------------------------------------------------------------
     # Веб-разработка

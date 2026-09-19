@@ -18,6 +18,13 @@
  *
  * Bosses identified via instance_encounters.creditEntry (creditType=0).
  *
+ * Commands (SEC_GAMEMASTER):
+ *   .champions off     -- stop spawning new champions; existing ones are left alone
+ *   .champions on      -- resume
+ *   .champions status  -- show current state
+ *   (.champion is an alias). The flag is in-memory only: a server restart
+ *   returns it to ON.
+ *
  * Eligibility filter:
  *   - Skips pets, summons, totems, non-attackable units
  *   - Skips Alliance/Horde faction NPCs
@@ -41,11 +48,28 @@
 
 #include <cmath>
 #include <mutex>
+#include <atomic>
 #include <array>
 #include <algorithm>
 #include <unordered_set>
 #include <vector>
 #include <string>
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RUNTIME TOGGLE
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// .champions off — новые чемпионы перестают появляться. Нужно прежде всего для
+//                  подземелий: чемпион на боссе превращает забег в стену.
+// .champions on  — появляются снова.
+//
+// Уже заспавненные чемпионы намеренно остаются как есть — откатывать статы
+// живому мобу в разгар боя значит ловить рассинхрон с клиентом; они уйдут сами
+// при респавне или ресете инстанса.
+//
+// Флаг живёт только в памяти: после перезапуска сервера чемпионы снова включены.
+// Читается из потоков карт, пишется из потока команд — отсюда atomic.
+static std::atomic<bool> s_enabled{true};
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TUNING CONSTANTS
@@ -847,6 +871,10 @@ public:
     // -----------------------------------------------------------------
     void OnCreatureAddWorld(Creature* c) override
     {
+        // Выключено через .champions off — новых не создаём, старых не трогаем
+        if (!s_enabled.load(std::memory_order_relaxed))
+            return;
+
         if (!IsEligible(c) || IsChampion(c) || !roll_chance_f(CHAMPION_CHANCE))
             return;
 
@@ -1283,6 +1311,58 @@ public:
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// COMMANDS
+// ══════════════════════════════════════════════════════════════════════════════
+
+class ChampionCommand : public CommandScript
+{
+public:
+    ChampionCommand() : CommandScript("champion_command") {}
+
+    Acore::ChatCommands::ChatCommandTable GetCommands() const override
+    {
+        static Acore::ChatCommands::ChatCommandTable championTable =
+        {
+            { "on",     HandleOn,     SEC_GAMEMASTER, Acore::ChatCommands::Console::Yes },
+            { "off",    HandleOff,    SEC_GAMEMASTER, Acore::ChatCommands::Console::Yes },
+            { "status", HandleStatus, SEC_GAMEMASTER, Acore::ChatCommands::Console::Yes },
+        };
+
+        static Acore::ChatCommands::ChatCommandTable commandTable =
+        {
+            { "champions", championTable },
+            { "champion",  championTable },
+        };
+
+        return commandTable;
+    }
+
+    static bool HandleOn(ChatHandler* handler, const char* /*args*/)
+    {
+        s_enabled.store(true, std::memory_order_relaxed);
+        handler->SendSysMessage("Champion Mobs: |cff00FF00ON|r - mobs can become champions again.");
+        return true;
+    }
+
+    static bool HandleOff(ChatHandler* handler, const char* /*args*/)
+    {
+        s_enabled.store(false, std::memory_order_relaxed);
+        handler->SendSysMessage("Champion Mobs: |cffFF0000OFF|r - no new champions will spawn.");
+        handler->SendSysMessage("Champions already in the world keep their stats until they respawn.");
+        return true;
+    }
+
+    static bool HandleStatus(ChatHandler* handler, const char* /*args*/)
+    {
+        if (s_enabled.load(std::memory_order_relaxed))
+            handler->SendSysMessage("Champion Mobs: |cff00FF00ON|r");
+        else
+            handler->SendSysMessage("Champion Mobs: |cffFF0000OFF|r");
+        return true;
+    }
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // REGISTRATION
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -1291,4 +1371,5 @@ void Addmod_champion_mobsScripts()
     new ChampionWorld();
     new ChampionAllCreature();
     new ChampionUnit();
+    new ChampionCommand();
 }
