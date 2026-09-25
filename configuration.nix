@@ -17,6 +17,7 @@
     ./modules/vikunja.nix  # Vikunja (self-hosted таск-менеджер) на https://tasks.tsai + MCP
     ./modules/azerothcore  # WoW WotLK 3.3.5a private server (выключен пока enable = false)
     ./modules/l2solo  # Lineage II C4 L2Solo emulator
+    ./modules/forge-images.nix  # Forge Images (локальная генерация изображений) + LAN
   ];
 
   nix.settings = {
@@ -371,6 +372,12 @@
 
   # ── L2Solo Lineage II Chronicle 4 (Scions of Destiny) ─────────────────────
   services.l2solo = {
+    enable = true;
+    openFirewall = true;
+  };
+
+  # ── Forge Images (локальная генерация изображений, управляется с home.tsai) ─
+  services.forge-images = {
     enable = true;
     openFirewall = true;
   };

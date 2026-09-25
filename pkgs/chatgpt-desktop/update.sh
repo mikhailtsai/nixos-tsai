@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 url="https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb"
 echo "качаю $url ..."
 store=$(nix-prefetch-url --print-path --type sha256 "$url" | tail -1)
-hash=$(nix hash convert --hash-algo sha256 --to sri "$(nix-store --query --hash "$store" 2>/dev/null || true)" 2>/dev/null || nix hash file --type sha256 --sri "$store")
+hash=$(nix hash file --type sha256 --sri "$store")
 version=$(nix-shell -p dpkg --run "dpkg-deb -f '$store' Version")
 
 cat > source.nix <<EOF2

@@ -15,3 +15,5 @@ secrets/*
 # Wallpapers (except default)
 wallpapers/*
 !wallpapers/wallpaper.jpg
+
+.opencode

@@ -8,6 +8,7 @@
 #   • Lineage II (L2Solo)      — статус / вкл / выкл / перезапуск
 #   • Penpot                   — статус 7 контейнеров / вкл / выкл / перезапуск
 #   • Vikunja (Tasks)          — статус контейнеров / вкл / выкл / перезапуск
+#   • Forge Images             — статус / вкл / выкл / перезапуск + ссылка на LAN
 #
 # Схема (копия penpot-паттерна, тот же локальный CA → жене доверять не надо заново):
 #   dnsmasq(home.tsai→192.168.1.57) → nginx(HTTPS) → 127.0.0.1:8088 (python-бэкенд)
@@ -21,6 +22,8 @@ let
   # Юниты, которыми управляем/за которыми следим
   wowUnits = [ "azerothcore-world" "azerothcore-auth" ];
   l2Units  = [ "l2solo" ];
+  forgeUnits = [ "forge-images" ];
+  forgePort  = config.services.forge-images.port;
   penpotContainers = [
     "postgres" "valkey" "backend" "exporter" "mcp" "mailcatch" "frontend"
   ];
@@ -42,6 +45,7 @@ let
     set -eu
     WOW="${lib.concatStringsSep " " wowUnits}"
     L2="${lib.concatStringsSep " " l2Units}"
+    FORGE="${lib.concatStringsSep " " forgeUnits}"
     PENPOT="${lib.concatStringsSep " " penpotUnits}"
     VIKUNJA="${lib.concatStringsSep " " vikunjaUnits}"
     # --no-block: не ждём завершения запуска (сервера стартуют долго),
@@ -53,6 +57,9 @@ let
       l2-start)        exec ${systemctl} start   --no-block $L2 ;;
       l2-stop)         exec ${systemctl} stop    --no-block $L2 ;;
       l2-restart)      exec ${systemctl} restart --no-block $L2 ;;
+      forge-start)     exec ${systemctl} start   --no-block $FORGE ;;
+      forge-stop)      exec ${systemctl} stop    --no-block $FORGE ;;
+      forge-restart)   exec ${systemctl} restart --no-block $FORGE ;;
       penpot-start)    exec ${systemctl} start   --no-block $PENPOT ;;
       penpot-stop)     exec ${systemctl} stop    --no-block $PENPOT ;;
       penpot-restart)  exec ${systemctl} restart --no-block $PENPOT ;;
@@ -81,6 +88,7 @@ let
     ACTIONS = {
         "wow-start", "wow-stop", "wow-restart",
         "l2-start", "l2-stop", "l2-restart",
+        "forge-start", "forge-stop", "forge-restart",
         "penpot-start", "penpot-stop", "penpot-restart",
         "vikunja-start", "vikunja-stop", "vikunja-restart",
     }
@@ -165,6 +173,28 @@ let
             "observer_url": "http://${serverIP}:8089/observer/",
         }
 
+        # Forge Images (Node/Express + ComfyUI)
+        f = unit_props("forge-images")
+        f_active = f.get("ActiveState") == "active"
+        if f_active:
+            f_phase = "active"
+        elif f.get("ActiveState") == "deactivating":
+            f_phase = "deactivating"
+        elif f.get("ActiveState") == "activating":
+            f_phase = "activating"
+        elif f.get("ActiveState") == "failed":
+            f_phase = "failed"
+        else:
+            f_phase = "inactive"
+        forge = {
+            "active": f_active,
+            "astate": f_phase,
+            "state": f.get("SubState", f.get("ActiveState", "?")),
+            "uptime": uptime_secs(f.get("ActiveEnterTimestampMonotonic", "0")),
+            "mem_mb": mem_mb(f.get("MemoryCurrent", "")) if f_active else None,
+            "url": "http://${serverIP}:${toString forgePort}",
+        }
+
         conts, up, mem = [], 0, 0
         for c in PENPOT:
             p = unit_props(c["unit"])
@@ -192,7 +222,7 @@ let
                            "state": p.get("SubState", p.get("ActiveState", "?"))})
         vikunja = {"up": vup, "total": len(VIKUNJA), "mem_mb": vmem or None,
                    "containers": vconts}
-        return {"wow": wow, "l2": l2, "penpot": penpot, "vikunja": vikunja}
+        return {"wow": wow, "l2": l2, "forge": forge, "penpot": penpot, "vikunja": vikunja}
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -255,8 +285,10 @@ in
   systemd.tmpfiles.rules = [
     "d /var/lib/home-dashboard       0755 root root  -"
     "d /var/lib/home-dashboard/certs 0750 root nginx -"
+    "d /home/leet/Games/l2solo/downloads 0755 leet users -"
     "z /var/lib/home-dashboard/certs/home.tsai.crt 0644 root nginx -"
     "z /var/lib/home-dashboard/certs/home.tsai.key 0640 root nginx -"
+    "z /home/leet/Games/l2solo/downloads/L2Solo-C4-client.7z 0644 leet users -"
   ];
 
   # ── Сервис бэкенда ────────────────────────────────────────────────────────
@@ -278,6 +310,11 @@ in
     };
   };
 
+  # ProtectHome остаётся включённым: nginx видит только каталог с дистрибутивом.
+  systemd.services.nginx.serviceConfig.BindReadOnlyPaths = [
+    "/home/leet/Games/l2solo/downloads:/run/l2-downloads"
+  ];
+
   # homedash дёргает systemctl только через фиксированную обёртку (whitelist внутри)
   security.sudo.extraRules = [{
     users    = [ "homedash" ];
@@ -293,6 +330,12 @@ in
     locations."/" = {
       proxyPass       = "http://127.0.0.1:${toString port}";
       proxyWebsockets = true;
+    };
+    locations."/downloads/" = {
+      alias = "/run/l2-downloads/";
+      extraConfig = ''
+        add_header Content-Disposition 'attachment' always;
+      '';
     };
   };
 

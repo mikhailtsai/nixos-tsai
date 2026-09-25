@@ -1,14 +1,14 @@
 {
-  version = "1.18.31";
+  version = "1.18.32";
 
   sources = {
     x86_64-linux = {
-      url = "https://github.com/anomalyco/opencode/releases/download/v1.18.31/opencode-desktop-linux-amd64.deb";
-      hash = "sha256-ZgbNcb733tMv+TYCnT/aaM4hSM7Gm7bxsKPGL/ZC8kA=";
+      url = "https://github.com/anomalyco/opencode/releases/download/v1.18.32/opencode-desktop-linux-amd64.deb";
+      hash = "sha256-v2Vn75/aGmOTFTcAoaNNygjwj5mcUEzGg2UTrrq9Now=";
     };
     aarch64-linux = {
-      url = "https://github.com/anomalyco/opencode/releases/download/v1.18.31/opencode-desktop-linux-arm64.deb";
-      hash = "sha256-RDNQPv63ksSoB5ecvr6d0wDzLflByF0gNkTHBiAXRd8=";
+      url = "https://github.com/anomalyco/opencode/releases/download/v1.18.32/opencode-desktop-linux-arm64.deb";
+      hash = "sha256-Nbez1Ile3Vj8ZcakC+3Ab2Wp4p6Yi53pr7NOPWpxarI=";
     };
   };
 }

@@ -32,6 +32,10 @@
     <span class="tab-glyph">✓</span> Tasks
     <span class="tab-dot" id="tabDotVikunja"></span>
   </button>
+  <button class="tab" role="tab" data-tab="forge" aria-selected="false">
+    <span class="tab-glyph">✦</span> Forge
+    <span class="tab-dot" id="tabDotForge"></span>
+  </button>
 </nav>
 
 <main>
@@ -96,6 +100,7 @@
       <button class="btn btn-primary" data-action="l2-start">Запустить</button>
       <button class="btn" data-action="l2-restart" data-confirm="Перезапустить Lineage II сервер? Игроки и боты будут отключены.">Перезапустить</button>
       <button class="btn btn-danger" data-action="l2-stop" data-confirm="Остановить Lineage II сервер? Игроки и боты будут отключены.">Остановить</button>
+      <a class="btn btn-download" href="/downloads/L2Solo-C4-client.7z" download>Скачать клиент · 1,8 ГБ</a>
     </div>
   </section>
 
@@ -154,6 +159,38 @@
       <button class="btn btn-primary" data-action="vikunja-start">Запустить</button>
       <button class="btn" data-action="vikunja-restart" data-confirm="Перезапустить Vikunja?">Перезапустить</button>
       <button class="btn btn-danger" data-action="vikunja-stop" data-confirm="Остановить Vikunja?">Остановить</button>
+    </div>
+  </section>
+
+  <!-- ── Forge Images ────────────────────────────────────────────────── -->
+  <section class="panel" id="panel-forge" role="tabpanel" hidden>
+    <div class="hero">
+      <div class="hero-status">
+        <span class="status-dot" id="forgeDot"></span>
+        <div>
+          <div class="status-label" id="forgeState">—</div>
+          <div class="status-desc">Forge · Local image studio (ComfyUI)</div>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <span class="metric-key">Uptime</span>
+          <span class="metric-val" id="forgeUptime">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-key">Память</span>
+          <span class="metric-val" id="forgeMem">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-key">Адрес (LAN)</span>
+          <a class="metric-val metric-link" id="forgeUrl" href="http://192.168.1.57:3000" target="_blank" rel="noopener">192.168.1.57:3000&nbsp;↗</a>
+        </div>
+      </div>
+    </div>
+    <div class="actions" id="forgeActions">
+      <button class="btn btn-primary" data-action="forge-start">Запустить</button>
+      <button class="btn" data-action="forge-restart" data-confirm="Перезапустить Forge Images?">Перезапустить</button>
+      <button class="btn btn-danger" data-action="forge-stop" data-confirm="Остановить Forge Images?">Остановить</button>
     </div>
   </section>
 </main>
@@ -361,7 +398,8 @@
     display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px;
   }
   .btn {
-    font-family: inherit; font-size: 13px; font-weight: 500;
+    display: inline-flex; align-items: center;
+    font-family: inherit; font-size: 13px; font-weight: 500; text-decoration: none;
     padding: 9px 16px; border-radius: var(--r-sm);
     border: 1px solid var(--border); color: var(--text);
     background: var(--surface-2); cursor: pointer;
@@ -384,6 +422,7 @@
   .btn-danger:hover:not(:disabled) {
     background: var(--danger-quiet); border-color: var(--danger);
   }
+  .btn-download { margin-left: auto; color: var(--accent-hover); }
 
   /* ── toast feedback ── */
   .toast-wrap {
@@ -492,9 +531,31 @@
           '"></span>' + c.name + "</span>";
       }).join("");
 
+      // Forge Images — одиночный юнит, логика как у l2
+      var f = d.forge;
+      if (f) {
+        var fst = f.astate, flabel, fdot, fbusy = (fst === "activating" || fst === "deactivating");
+        if (fst === "active")            { flabel = "Запущен";          fdot = "on"; }
+        else if (fst === "activating")   { flabel = "Запускается…";     fdot = "warn"; }
+        else if (fst === "deactivating") { flabel = "Останавливается…"; fdot = "warn"; }
+        else if (fst === "failed")       { flabel = "Ошибка запуска";   fdot = "off"; }
+        else                             { flabel = "Остановлен";       fdot = "off"; }
+        document.getElementById("forgeState").textContent = flabel;
+        setDot(document.getElementById("forgeDot"), fdot);
+        setDot(document.getElementById("tabDotForge"), fdot);
+        document.getElementById("forgeMem").textContent = f.mem_mb ? f.mem_mb + " МБ" : "—";
+        if (f.url) {
+          var fu = document.getElementById("forgeUrl");
+          fu.href = f.url;
+          fu.textContent = f.url.replace(/^https?:\/\//, "") + "\u00a0↗";
+        }
+        toggleActions("forgeActions", fst === "active" || fbusy);
+        if (fbusy) boost();
+      }
+
       // общий индикатор здоровья
-      var okAll = w.active && (l ? l.active : true) && all && vall;
-      var anyUp = w.active || (l ? l.active : false) || p.up || v.up;
+      var okAll = w.active && (l ? l.active : true) && all && vall && (f ? f.active : true);
+      var anyUp = w.active || (l ? l.active : false) || p.up || v.up || (f ? f.active : false);
       var hd = document.getElementById("healthDot");
       hd.style.background = okAll ? "var(--success)" : anyUp ? "var(--warning)" : "var(--text-3)";
       document.getElementById("healthText").textContent =
@@ -506,6 +567,7 @@
       if (!box) return;
       box.querySelectorAll(".btn").forEach(function (b) {
         var a = b.dataset.action;
+        if (!a) return;
         var isStart = a.indexOf("start") >= 0;
         b.style.display = (isStart ? !running : running) ? "" : "none";
       });
@@ -520,17 +582,25 @@
         var lextra = (Date.now() - live.at) / 1000;
         document.getElementById("l2Uptime").textContent = fmtUptime(live.l2.uptime + lextra);
       }
+      if (live && live.forge && live.forge.uptime != null && live.forge.active) {
+        var fextra = (Date.now() - live.at) / 1000;
+        document.getElementById("forgeUptime").textContent = fmtUptime(live.forge.uptime + fextra);
+      }
     }
 
     function refresh() {
       return fetch("/api/status").then(function (r) { return r.json(); }).then(function (d) {
-        live = { wow: d.wow, l2: d.l2, at: Date.now() };
+        live = { wow: d.wow, l2: d.l2, forge: d.forge, at: Date.now() };
         render(d);
         document.getElementById("wowUptime").textContent =
           d.wow.active ? fmtUptime(d.wow.uptime) : "—";
         if (d.l2) {
           document.getElementById("l2Uptime").textContent =
             d.l2.active ? fmtUptime(d.l2.uptime) : "—";
+        }
+        if (d.forge) {
+          document.getElementById("forgeUptime").textContent =
+            d.forge.active ? fmtUptime(d.forge.uptime) : "—";
         }
       }).catch(function () {
         document.getElementById("healthText").textContent = "нет связи";
@@ -553,6 +623,7 @@
     var LABEL = {
       "wow-start": "WoW запускается…", "wow-stop": "WoW остановлен", "wow-restart": "WoW перезапускается…",
       "l2-start": "Lineage II запускается…", "l2-stop": "Lineage II остановлен", "l2-restart": "Lineage II перезапускается…",
+      "forge-start": "Forge Images запускается…", "forge-stop": "Forge Images остановлен", "forge-restart": "Forge Images перезапускается…",
       "penpot-start": "Penpot запускается…", "penpot-stop": "Penpot остановлен", "penpot-restart": "Penpot перезапускается…",
       "vikunja-start": "Vikunja запускается…", "vikunja-stop": "Vikunja остановлен", "vikunja-restart": "Vikunja перезапускается…"
     };

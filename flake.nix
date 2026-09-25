@@ -19,9 +19,10 @@
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     awww.url = "git+https://codeberg.org/LGFae/awww";
+    comfyui-nix.url = "github:utensils/comfyui-nix";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-ai, nixpkgs-mindustry, home-manager, awww, ... }:
+  outputs = { self, nixpkgs, nixpkgs-ai, nixpkgs-mindustry, home-manager, awww, comfyui-nix, ... }:
     let
       system = "x86_64-linux";
       vars   = import ./vars.nix;
@@ -35,7 +36,13 @@
             config.allowUnfree = true;
           };
         in {
-          inherit (ai) claude-code codex code-cursor opencode;
+          inherit (ai) codex code-cursor opencode;
+
+          # claude-code в nixpkgs отстаёт на 1-3 патча; пакет принимает manifest
+          # аргументом, поэтому подставляем свежий (pkgs/claude-code/update.sh).
+          claude-code = ai.claude-code.override {
+            manifest = ai.lib.importJSON ./pkgs/claude-code/manifest.json;
+          };
 
           # ChatGPT desktop для Linux (Chat + Work + Codex) — своя сборка из
           # официального .deb: в nixpkgs Linux-поддержки ещё нет.
@@ -43,6 +50,9 @@
 
           # OpenCode Desktop для Linux — официальный .deb от anomalyco
           opencode-desktop = ai.callPackage ./pkgs/opencode-desktop/package.nix { };
+
+          # Claude Desktop для Linux (beta) — официальный .deb из apt-репо Anthropic
+          claude-desktop = ai.callPackage ./pkgs/claude-desktop/package.nix { };
 
           # См. комментарий у input nixpkgs-mindustry выше.
           inherit ((import nixpkgs-mindustry {
@@ -63,6 +73,8 @@
       commonModules = [
         ./configuration.nix
         ./ai.nix
+        comfyui-nix.nixosModules.default
+        ./image-ai.nix
         { nixpkgs.overlays = [ aiOverlay ]; }
         home-manager.nixosModules.home-manager
         {
@@ -78,12 +90,6 @@
         inherit system;
         specialArgs = { inherit awww vars; };
         modules = commonModules;
-      };
-
-      nixosConfigurations.nixos-vmware = nixpkgs.lib.nixosSystem {
-        inherit system;
-        specialArgs = { inherit awww vars; };
-        modules = commonModules ++ [ ./vmware.nix ];
       };
 
       # Окружение для сборки Godot GDExtension под Windows

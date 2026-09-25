@@ -260,6 +260,7 @@ in
     claude-code
     codex
     chatgpt-desktop  # ChatGPT desktop (Chat + Work + Codex) — оф. .deb OpenAI, см. pkgs/chatgpt-desktop
+    claude-desktop   # Claude Desktop (beta) — оф. .deb Anthropic, см. pkgs/claude-desktop
 
     # -------------------------------------------------------------------------
     # Веб-разработка
