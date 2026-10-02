@@ -36,7 +36,46 @@
             config.allowUnfree = true;
           };
         in {
-          inherit (ai) codex code-cursor opencode;
+          inherit (ai) code-cursor;
+
+          # codex/opencode в nixpkgs-ai отстают на 1 релиз (апстрим выпускает
+          # каждые пару дней). Пиним на версию/хеши из nixpkgs master, пока
+          # nixpkgs-ai не догонит — тогда override отключается сам.
+          codex =
+            let base = ai.codex; in
+            if ai.lib.versionOlder base.version "0.160.0" then
+              base.overrideAttrs (old: rec {
+                version = "0.160.0";
+                src = ai.fetchFromGitHub {
+                  owner = "openai";
+                  repo = "codex";
+                  tag = "rust-v${version}";
+                  hash = "sha256-UFPv9UK0MBYZfpZ3QlkTXa19ykHwIEo3JdwPtUUrJls=";
+                };
+                cargoHash = "sha256-DMRbIOynO0wGXjBxaXZJNKorD9YQv3fAoRTZ4iZEIE4=";
+                # overrideAttrs не пересчитывает cargoDeps из cargoHash — собираем заново.
+                cargoDeps = ai.rustPlatform.fetchCargoVendor {
+                  name = "codex-${version}";
+                  inherit src;
+                  sourceRoot = "${src.name}/codex-rs";
+                  hash = cargoHash;
+                };
+              })
+            else base;
+
+          opencode =
+            let base = ai.opencode; in
+            if ai.lib.versionOlder base.version "1.18.34" then
+              base.overrideAttrs (old: rec {
+                version = "1.18.34";
+                src = ai.fetchFromGitHub {
+                  owner = "anomalyco";
+                  repo = "opencode";
+                  tag = "v${version}";
+                  hash = "sha256-ygTBG79utH0A1Dmg+tjEeTA633bLO0OfDdi6AwwQnZw=";
+                };
+              })
+            else base;
 
           # claude-code в nixpkgs отстаёт на 1-3 патча; пакет принимает manifest
           # аргументом, поэтому подставляем свежий (pkgs/claude-code/update.sh).
