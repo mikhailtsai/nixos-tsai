@@ -25,7 +25,7 @@ in {
     networking.firewall.allowedTCPPorts = lib.optionals cfg.openFirewall [ cfg.port ];
 
     # Systemd-сервис Forge Images.
-    # Запускается вручную (кнопкой на home.tsai), как и l2solo: wantedBy = [].
+    # Запускается вручную (кнопкой на home.tsai), как и l2lw: wantedBy = [].
     systemd.services.forge-images = {
       description = "Forge Images (Node/Express + ComfyUI)";
       after = [ "network.target" "comfyui.service" ];

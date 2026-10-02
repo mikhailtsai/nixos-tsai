@@ -16,14 +16,22 @@
     ./modules/home-dashboard.nix  # Веб-панель управления сервисами на https://home.tsai
     ./modules/vikunja.nix  # Vikunja (self-hosted таск-менеджер) на https://tasks.tsai + MCP
     ./modules/azerothcore  # WoW WotLK 3.3.5a private server (выключен пока enable = false)
-    ./modules/l2solo  # Lineage II C4 L2Solo emulator
+    ./modules/l2-hf-bots        # Lineage II High Five + автономные боты (L2J Mobius CT 2.6)
     ./modules/forge-images.nix  # Forge Images (локальная генерация изображений) + LAN
   ];
 
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
     auto-optimise-store = true;
+    # Ограничение параллелизма сборок: дефолт (32 джобы × все ядра) на 32 ГБ RAM
+    # положил систему в livelock при обновлении comfyui-nix (27 сен).
+    max-jobs = 4;
+    cores = 8;
+    max-substitution-jobs = 8;
   };
+  # Сборки с низким приоритетом CPU/IO — десктоп и сервисы не фризятся.
+  nix.daemonCPUSchedPolicy = "batch";
+  nix.daemonIOSchedClass = "idle";
 
   nixpkgs.config.allowUnfree = true;
   nixpkgs.config.android_sdk.accept_license = true; # для androidenv (Flutter/Android SDK)
@@ -370,8 +378,8 @@
   hardware.rasdaemon.enable = true;
 
 
-  # ── L2Solo Lineage II Chronicle 4 (Scions of Destiny) ─────────────────────
-  services.l2solo = {
+  # ── L2 High Five с ботами — Lineage II CT 2.6 (L2J Mobius + playerbots) ──────
+  services.l2-hf-bots = {
     enable = true;
     openFirewall = true;
   };

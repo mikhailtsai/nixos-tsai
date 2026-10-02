@@ -8,7 +8,7 @@
     height = 30;
     modules-left = [ "hyprland/workspaces" "hyprland/window" ];
     modules-center = [ "clock" ];
-    modules-right = [ "hyprland/language" "pulseaudio" "network" "battery" "custom/wow" "custom/l2" "custom/swaync" "tray" "custom/power" ];
+    modules-right = [ "hyprland/language" "pulseaudio" "network" "battery" "custom/wow" "custom/l2" "custom/dsh" "custom/swaync" "tray" "custom/power" ];
 
     "hyprland/workspaces" = {
       format = "{name}";
@@ -72,6 +72,15 @@
       tooltip = true;
     };
 
+    "custom/dsh" = {
+      exec = "dsh-status";
+      on-click = "dsh-toggle";
+      on-click-right = "dsh-open";
+      interval = 5;
+      return-type = "json";
+      tooltip = true;
+    };
+
     "custom/swaync" = {
       tooltip = false;
       format = "{icon}";
@@ -124,7 +133,7 @@
       color: #33ccff;
     }
 
-    #clock, #battery, #network, #pulseaudio, #tray, #custom-power, #language, #custom-wow, #custom-l2 {
+    #clock, #battery, #network, #pulseaudio, #tray, #custom-power, #language, #custom-wow, #custom-l2, #custom-dsh {
       padding: 0 10px;
     }
 
@@ -133,11 +142,11 @@
       font-weight: bold;
     }
 
-    #custom-wow.running, #custom-l2.running {
+    #custom-wow.running, #custom-l2.running, #custom-dsh.running {
       color: #00ff99;
     }
 
-    #custom-wow.stopped, #custom-l2.stopped {
+    #custom-wow.stopped, #custom-l2.stopped, #custom-dsh.stopped {
       color: #666666;
     }
 

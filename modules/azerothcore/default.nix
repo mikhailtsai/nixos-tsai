@@ -428,7 +428,12 @@ in {
     services.mysql = lib.mkIf cfg.mysql.createLocally {
       enable  = true;
       package = pkgs.mysql84;  # AzerothCore требует MySQL 8.2+
+      # Временные файлы (binlog-кэш больших INSERT'ов апдейтов) — не в PrivateTmp:
+      # 26 сен приватный /tmp mysqld пропал, и апдейт playerbots падал с
+      # "Can't create/write to file '/tmp/ML…'" → worldserver в цикле рестартов.
+      settings.mysqld.tmpdir = "/var/lib/mysql-tmp";
     };
+    systemd.services.mysql.serviceConfig.ReadWritePaths = lib.mkIf cfg.mysql.createLocally [ "/var/lib/mysql-tmp" ];
 
     # Создаём БД и пользователя (запускается один раз при старте системы)
     systemd.services.azerothcore-db-setup = lib.mkIf cfg.mysql.createLocally {
@@ -551,7 +556,8 @@ in {
       "L+ ${cfg.stateDir}/worldserver.conf                    - - - - ${worldserverConf}"
       "L+ ${cfg.stateDir}/modules/playerbots.conf             - - - - ${moduleConfDir}/playerbots.conf"
     ] ++ lib.optional cfg.mods.ahbot
-      "L+ ${cfg.stateDir}/modules/mod_ahbot.conf            - - - - ${moduleConfDir}/mod_ahbot.conf";
+      "L+ ${cfg.stateDir}/modules/mod_ahbot.conf            - - - - ${moduleConfDir}/mod_ahbot.conf"
+      ++ lib.optional cfg.mysql.createLocally "d /var/lib/mysql-tmp 0750 mysql mysql -";
 
     # ── Auth Server ──────────────────────────────────────────────────────────
     systemd.services.azerothcore-auth = {

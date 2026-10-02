@@ -1,7 +1,7 @@
 { config, pkgs, lib, vars, ... }:
 
 let
-  modelsDir = "/home/${vars.username}/Models";
+  modelsDir = "/home/${vars.username}/Storage/Models";
   llamaPort = 8642;
 
   modelsPreset = pkgs.writeText "llama-models.ini" ''
@@ -154,6 +154,21 @@ let
       done
   '';
 
+
+  # ── DeepSeek Harness Web UI (кнопка waybar) ─────────────────────────────────
+  # dsh при старте печатает авторизованный URL (с токеном) в stdout. Пишем его
+  # прямо в рантайм-файл (без пайпа — иначе node буферизует), откуда правый
+  # клик по кнопке берёт ссылку и открывает браузер уже с токеном.
+  deepseek-harness-web = pkgs.writeShellScript "deepseek-harness-web" ''
+    set -euo pipefail
+    url_file=/run/deepseek-harness/web.url
+    : > "$url_file"
+
+    exec ${pkgs.deepseek-harness}/bin/dsh web \
+      --host 127.0.0.1 --port 3080 --no-open \
+      >> "$url_file" 2>&1
+  '';
+
 in
 {
   # ── llama.cpp ───────────────────────────────────────────────────────────────
@@ -176,7 +191,7 @@ in
   };
 
 
-  # ── Доступ к ~/Models ──────────────────────────────────────────────────────
+  # ── Доступ к ~/Storage/Models ─────────────────────────────────────────────
   systemd.services.llama-cpp.serviceConfig = {
     ProtectHome = lib.mkForce "read-only";
 
@@ -212,6 +227,47 @@ in
       Unit = "llama-cpp-unload-sleeping.service";
     };
   };
+
+
+  # ── DeepSeek Harness Web UI — управляется кнопкой waybar ────────────────────
+  # Не стартует при загрузке (wantedBy = []); включается/выключается кнопкой,
+  # как WoW/L2. ЛКМ — toggle, ПКМ — открыть браузер (см. home/waybar.nix).
+  systemd.services.deepseek-harness = {
+    description = "DeepSeek Harness (dsh) Web UI";
+
+    after = [ "network.target" ];
+    wantedBy = [ ];
+
+    serviceConfig = {
+      Type = "simple";
+      User = vars.username;
+      Group = "users";
+
+      # /run/deepseek-harness/web.url — авторизованный URL для кнопки waybar.
+      RuntimeDirectory = "deepseek-harness";
+      RuntimeDirectoryMode = "0755";
+
+      # dsh запускает bash/rg/git как инструменты агента — нужен вменяемый PATH.
+      Environment = [
+        "PATH=${lib.makeBinPath (with pkgs; [ bashInteractive coreutils git ripgrep fd findutils gnused gnugrep nodejs ])}"
+      ];
+
+      ExecStart = deepseek-harness-web;
+      Restart = "on-failure";
+      RestartSec = "3s";
+    };
+  };
+
+  # Включение/выключение harness без пароля — для кнопки waybar (ЛКМ).
+  security.sudo.extraRules = [{
+    users = [ vars.username ];
+    commands = [
+      { command = "${pkgs.systemd}/bin/systemctl start deepseek-harness";
+        options = [ "NOPASSWD" ]; }
+      { command = "${pkgs.systemd}/bin/systemctl stop deepseek-harness";
+        options = [ "NOPASSWD" ]; }
+    ];
+  }];
 
 
   # ── OpenCode ────────────────────────────────────────────────────────────────

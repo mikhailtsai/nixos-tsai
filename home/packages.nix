@@ -85,20 +85,63 @@ let
   '';
 
   l2-status = pkgs.writeShellScriptBin "l2-status" ''
-    if systemctl is-active --quiet l2solo; then
-      echo '{"text":"🛡 L2","class":"running","tooltip":"L2Solo (C4): запущен"}'
+    if systemctl is-active --quiet l2hf; then
+      echo '{"text":"🛡 L2","class":"running","tooltip":"L2 High Five + боты: запущен"}'
     else
-      echo '{"text":"🛡 L2","class":"stopped","tooltip":"L2Solo (C4): остановлен"}'
+      echo '{"text":"🛡 L2","class":"stopped","tooltip":"L2 High Five + боты: остановлен"}'
     fi
   '';
 
   l2-toggle = pkgs.writeShellScriptBin "l2-toggle" ''
-    if systemctl is-active --quiet l2solo; then
-      sudo ${pkgs.systemd}/bin/systemctl stop l2solo
-      ${pkgs.libnotify}/bin/notify-send -i dialog-error "L2Solo" "Сервер Lineage II остановлен"
+    if systemctl is-active --quiet l2hf; then
+      sudo ${pkgs.systemd}/bin/systemctl stop l2hf
+      ${pkgs.libnotify}/bin/notify-send -i dialog-error "L2 High Five" "Сервер Lineage II остановлен"
     else
-      sudo ${pkgs.systemd}/bin/systemctl start l2solo
-      ${pkgs.libnotify}/bin/notify-send -i dialog-information "L2Solo" "Сервер Lineage II запущен"
+      sudo ${pkgs.systemd}/bin/systemctl start l2hf
+      ${pkgs.libnotify}/bin/notify-send -i dialog-information "L2 High Five" "Сервер Lineage II запущен"
+    fi
+  '';
+
+  dsh-status = pkgs.writeShellScriptBin "dsh-status" ''
+    if systemctl is-active --quiet deepseek-harness; then
+      echo '{"text":"◆ DSH","class":"running","tooltip":"DeepSeek Harness: запущен\\nЛКМ — остановить\\nПКМ — открыть в браузере"}'
+    else
+      echo '{"text":"◆ DSH","class":"stopped","tooltip":"DeepSeek Harness: остановлен\\nЛКМ — запустить\\nПКМ — открыть в браузере"}'
+    fi
+  '';
+
+  dsh-toggle = pkgs.writeShellScriptBin "dsh-toggle" ''
+    if systemctl is-active --quiet deepseek-harness; then
+      sudo ${pkgs.systemd}/bin/systemctl stop deepseek-harness
+      ${pkgs.libnotify}/bin/notify-send -i dialog-error "DeepSeek Harness" "Остановлен"
+    else
+      sudo ${pkgs.systemd}/bin/systemctl start deepseek-harness
+      ${pkgs.libnotify}/bin/notify-send -i dialog-information "DeepSeek Harness" "Запущен"
+    fi
+  '';
+
+  # ПКМ по кнопке: открыть веб-UI в браузере с токеном из рантайм-файла сервиса.
+  dsh-open = pkgs.writeShellScriptBin "dsh-open" ''
+    set -u
+    url_file=/run/deepseek-harness/web.url
+
+    if ! systemctl is-active --quiet deepseek-harness; then
+      ${pkgs.libnotify}/bin/notify-send -u critical -i dialog-warning "DeepSeek Harness" "Сервис не запущен — включи ЛКМ"
+      exit 1
+    fi
+
+    # dsh печатает URL через ~2 сек после старта — ждём его в файле.
+    url=""
+    for _ in $(seq 1 30); do
+      url=$(${pkgs.gnugrep}/bin/grep -o 'http://127.0.0.1:3080/?token=[^[:space:]]*' "$url_file" 2>/dev/null | ${pkgs.coreutils}/bin/tail -n1)
+      [ -n "$url" ] && break
+      sleep 0.5
+    done
+
+    if [ -n "$url" ]; then
+      ${pkgs.xdg-utils}/bin/xdg-open "$url" >/dev/null 2>&1 &
+    else
+      ${pkgs.libnotify}/bin/notify-send -u critical "DeepSeek Harness" "Не дождался URL от сервиса"
     fi
   '';
 
@@ -191,6 +234,9 @@ in
     wow-toggle
     l2-status
     l2-toggle
+    dsh-status
+    dsh-toggle
+    dsh-open
     screen-translate
     vault
   ] ++ (with pkgs; [

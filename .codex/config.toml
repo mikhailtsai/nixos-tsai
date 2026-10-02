@@ -1,0 +1,12 @@
+# Project-scoped Codex multi-agent configuration.
+# Luna is the economical default for both the primary session and spawned work.
+# An explicit CLI --model selection still takes precedence when needed.
+
+model = "gpt-6-luna"
+model_reasoning_effort = "high"
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 6
+default_subagent_model = "gpt-6-luna"
+default_subagent_reasoning_effort = "medium"

@@ -1,0 +1,17 @@
+{
+  "variant": "normal",
+  "agents": {
+    "orchestrator": "openrouter/deepseek/deepseek-v4.1-flash",
+    "product-analyst": "openrouter/deepseek/deepseek-v4.1-flash",
+    "system-analyst": "openrouter/deepseek/deepseek-v4.1-flash",
+    "researcher": "openrouter/deepseek/deepseek-v4.1-flash",
+    "implementer": "openrouter/deepseek/deepseek-v4.1-flash",
+    "worker": "openrouter/deepseek/deepseek-v4.1-flash",
+    "test-engineer": "openrouter/deepseek/deepseek-v4.1-flash",
+    "reviewer": "openrouter/deepseek/deepseek-v4.1-flash",
+    "requirements-reviewer": "openrouter/deepseek/deepseek-v4.1-flash",
+    "security-reviewer": "openrouter/deepseek/deepseek-v4.1-flash",
+    "architect": "openrouter/z-ai/glm-5.3-flash",
+    "oracle": "openrouter/z-ai/glm-5.3-flash"
+  }
+}

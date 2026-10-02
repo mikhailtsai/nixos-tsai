@@ -156,7 +156,14 @@ in
     # Видео редактирование
     # -------------------------------------------------------------------------
     kdePackages.kdenlive
-    ffmpeg
+    ffmpeg-full       # полный набор кодеков/фильтров (нужен SynthCut: libx264 и пр.)
+    synthcut          # AI-видеоредактор (Electron + FFmpeg + MCP), см. pkgs/synthcut
+    remotion-mcp      # Remotion MCP (поиск по документации) для opencode, см. pkgs/remotion-mcp
+
+    # -------------------------------------------------------------------------
+    # Графика
+    # -------------------------------------------------------------------------
+    gimp
 
     # -------------------------------------------------------------------------
     # Аудио / DAW
@@ -261,6 +268,7 @@ in
     codex
     chatgpt-desktop  # ChatGPT desktop (Chat + Work + Codex) — оф. .deb OpenAI, см. pkgs/chatgpt-desktop
     claude-desktop   # Claude Desktop (beta) — оф. .deb Anthropic, см. pkgs/claude-desktop
+    deepseek-harness # DeepSeek Harness (dsh) — CLI agent harness, см. pkgs/deepseek-harness
 
     # -------------------------------------------------------------------------
     # Веб-разработка

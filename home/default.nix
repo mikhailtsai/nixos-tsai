@@ -20,6 +20,7 @@
   home.sessionVariables = {
     CHROME_EXECUTABLE = "${pkgs.chromium}/bin/chromium";
     GDK_DPI_SCALE     = "1.25";
+    BASH_MAX_OUTPUT_LENGTH = "15000";
   };
 
   home.sessionPath = [ "$HOME/.local/bin" "$HOME/.npm-global/bin" ];

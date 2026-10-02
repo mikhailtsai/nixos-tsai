@@ -15,6 +15,14 @@
         "map to guest" = "Bad User";
         "guest account" = "nobody";
       };
+      Shared = {
+        path = "/home/leet/Shared";
+        browseable = "yes";
+        "read only" = "yes";
+        "guest ok" = "no";
+        "valid users" = "leet";
+        "hosts allow" = "192.168.1.0/24 127.0.0.1";
+      };
     };
   };
   services.samba-wsdd = {

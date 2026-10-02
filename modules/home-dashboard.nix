@@ -5,7 +5,7 @@
 # Без пароля — доступна только по LAN (nginx слушает только name-based vhost,
 # сам бэкенд висит на 127.0.0.1). Вкладки:
 #   • WoW server (AzerothCore) — статус / вкл / выкл / перезапуск
-#   • Lineage II (L2Solo)      — статус / вкл / выкл / перезапуск
+#   • Lineage II (L2 Living Worlds) — статус / вкл / выкл / перезапуск
 #   • Penpot                   — статус 7 контейнеров / вкл / выкл / перезапуск
 #   • Vikunja (Tasks)          — статус контейнеров / вкл / выкл / перезапуск
 #   • Forge Images             — статус / вкл / выкл / перезапуск + ссылка на LAN
@@ -21,7 +21,7 @@ let
 
   # Юниты, которыми управляем/за которыми следим
   wowUnits = [ "azerothcore-world" "azerothcore-auth" ];
-  l2Units  = [ "l2solo" ];
+  l2Units  = [ "l2hf" ];
   forgeUnits = [ "forge-images" ];
   forgePort  = config.services.forge-images.port;
   penpotContainers = [
@@ -151,8 +151,8 @@ let
             "auth": a.get("ActiveState") == "active",
         }
 
-        # Lineage II (L2Solo)
-        l = unit_props("l2solo")
+        # Lineage II (High Five + боты)
+        l = unit_props("l2hf")
         l_active = l.get("ActiveState") == "active"
         if l_active:
             l_phase = "active"
@@ -170,7 +170,6 @@ let
             "state": l.get("SubState", l.get("ActiveState", "?")),
             "uptime": uptime_secs(l.get("ActiveEnterTimestampMonotonic", "0")),
             "mem_mb": mem_mb(l.get("MemoryCurrent", "")) if l_active else None,
-            "observer_url": "http://${serverIP}:8089/observer/",
         }
 
         # Forge Images (Node/Express + ComfyUI)
@@ -285,10 +284,8 @@ in
   systemd.tmpfiles.rules = [
     "d /var/lib/home-dashboard       0755 root root  -"
     "d /var/lib/home-dashboard/certs 0750 root nginx -"
-    "d /home/leet/Games/l2solo/downloads 0755 leet users -"
     "z /var/lib/home-dashboard/certs/home.tsai.crt 0644 root nginx -"
     "z /var/lib/home-dashboard/certs/home.tsai.key 0640 root nginx -"
-    "z /home/leet/Games/l2solo/downloads/L2Solo-C4-client.7z 0644 leet users -"
   ];
 
   # ── Сервис бэкенда ────────────────────────────────────────────────────────
@@ -310,11 +307,6 @@ in
     };
   };
 
-  # ProtectHome остаётся включённым: nginx видит только каталог с дистрибутивом.
-  systemd.services.nginx.serviceConfig.BindReadOnlyPaths = [
-    "/home/leet/Games/l2solo/downloads:/run/l2-downloads"
-  ];
-
   # homedash дёргает systemctl только через фиксированную обёртку (whitelist внутри)
   security.sudo.extraRules = [{
     users    = [ "homedash" ];
@@ -330,12 +322,6 @@ in
     locations."/" = {
       proxyPass       = "http://127.0.0.1:${toString port}";
       proxyWebsockets = true;
-    };
-    locations."/downloads/" = {
-      alias = "/run/l2-downloads/";
-      extraConfig = ''
-        add_header Content-Disposition 'attachment' always;
-      '';
     };
   };
 

@@ -71,14 +71,14 @@
     </div>
   </section>
 
-  <!-- ── Lineage II (L2Solo) ─────────────────────────────────────────── -->
+  <!-- ── Lineage II (L2 Living Worlds) ─────────────────────────────────────────── -->
   <section class="panel" id="panel-l2" role="tabpanel" hidden>
     <div class="hero">
       <div class="hero-status">
         <span class="status-dot" id="l2Dot"></span>
         <div>
           <div class="status-label" id="l2State">—</div>
-          <div class="status-desc" id="l2Desc">L2Solo · C4 Scions of Destiny (x7)</div>
+          <div class="status-desc" id="l2Desc">L2 High Five · боты</div>
         </div>
       </div>
       <div class="metrics">
@@ -90,17 +90,12 @@
           <span class="metric-key">Память</span>
           <span class="metric-val" id="l2Mem">—</span>
         </div>
-        <div class="metric">
-          <span class="metric-key">Карта мира</span>
-          <a class="metric-val metric-link" href="http://192.168.1.57:8089/observer/" target="_blank" rel="noopener">WorldObserver&nbsp;↗</a>
-        </div>
       </div>
     </div>
     <div class="actions" id="l2Actions">
       <button class="btn btn-primary" data-action="l2-start">Запустить</button>
       <button class="btn" data-action="l2-restart" data-confirm="Перезапустить Lineage II сервер? Игроки и боты будут отключены.">Перезапустить</button>
       <button class="btn btn-danger" data-action="l2-stop" data-confirm="Остановить Lineage II сервер? Игроки и боты будут отключены.">Остановить</button>
-      <a class="btn btn-download" href="/downloads/L2Solo-C4-client.7z" download>Скачать клиент · 1,8 ГБ</a>
     </div>
   </section>
 
@@ -485,7 +480,7 @@
       toggleActions("wowActions", st === "active" || busy);
       if (busy) boost();
 
-      // Lineage II (L2Solo)
+      // Lineage II (L2 Living Worlds)
       var l = d.l2;
       if (l) {
         var lst = l.astate, llabel, ldot, lbusy = (lst === "activating" || lst === "deactivating");

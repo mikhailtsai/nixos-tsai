@@ -54,6 +54,16 @@
           # Claude Desktop для Linux (beta) — официальный .deb из apt-репо Anthropic
           claude-desktop = ai.callPackage ./pkgs/claude-desktop/package.nix { };
 
+          # DeepSeek Harness (dsh) — открытый agent harness DeepSeek AI (npm-пакет)
+          deepseek-harness = ai.callPackage ./pkgs/deepseek-harness/package.nix { };
+
+          # SynthCut by Relo — AI-видеоредактор (Electron + FFmpeg + MCP).
+          # Linux-сборки у апстрима нет, собираем npm-монорепу из исходников.
+          synthcut = ai.callPackage ./pkgs/synthcut/package.nix { };
+
+          # Remotion MCP — сервер документации Remotion для AI-клиентов (opencode).
+          remotion-mcp = ai.callPackage ./pkgs/remotion-mcp/package.nix { };
+
           # См. комментарий у input nixpkgs-mindustry выше.
           inherit ((import nixpkgs-mindustry {
             inherit system;
@@ -90,6 +100,13 @@
         inherit system;
         specialArgs = { inherit awww vars; };
         modules = commonModules;
+      };
+
+      # Удобный доступ к отдельным AI-пакетам: nix build .#deepseek-harness
+      packages.${system} = {
+        deepseek-harness = (pkgs.extend aiOverlay).deepseek-harness;
+        synthcut = (pkgs.extend aiOverlay).synthcut;
+        remotion-mcp = (pkgs.extend aiOverlay).remotion-mcp;
       };
 
       # Окружение для сборки Godot GDExtension под Windows
