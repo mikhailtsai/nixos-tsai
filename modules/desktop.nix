@@ -50,6 +50,7 @@
 
   # Принтеры (CUPS + mDNS)
   services.printing.enable = true;
+  programs.system-config-printer.enable = true;
   services.avahi = {
     enable = true;
     nssmdns4 = true;

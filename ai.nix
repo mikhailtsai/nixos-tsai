@@ -34,28 +34,15 @@ let
     # Через 5 минут idle модель можно полностью выгрузить.
     sleep-idle-seconds = 300
 
-    # ── Qwen3 14B 128K ───────────────────────────────────────────────────────
+    # ── Qwen3.6 35B-A3B (MoE) ────────────────────────────────────────────────
     #
-    # Быстрый кандидат на роль orchestrator.
-    # 128K GGUF уже содержит YaRN scaling.
+    # Кандидат на роль orchestrator.
+    # MoE: ~3B активных параметров — быстрый, при этом качество 35B.
     #
-    # IQ4_XS около 8.1 GB — должен значительно лучше помещаться
-    # в 12 GB VRAM вместе с KV cache.
-    [qwen-orch-14b]
-    model = ${modelsDir}/Qwen3-14B-128K-IQ4_XS.gguf
-    ctx-size = 65536
-
-    temperature = 0.2
-    top-p = 0.9
-    min-p = 0.05
-
-    # ── Gemma 4 12B ──────────────────────────────────────────────────────────
-    #
-    # Второй кандидат на роль orchestrator.
-    # Q4_K_M выбран ради полного/почти полного GPU residency
-    # и запаса VRAM под 64K KV cache.
-    [gemma-orch-12b]
-    model = ${modelsDir}/gemma-4-12B-it-Q4_K_M.gguf
+    # ShapeLearn IQ4_XS (~3.93 bpw, ~17 GB) — часть в 12 GB VRAM,
+    # остальное в системной RAM (fit = on).
+    [qwen-orch-35b]
+    model = ${modelsDir}/Qwen3.6-35B-A3B-ShapeLearn-IQ4_XS.gguf
     ctx-size = 65536
 
     temperature = 0.2
@@ -77,30 +64,6 @@ let
     min-p = 0.05
 
 
-    # ── Devstral Small 2 24B ─────────────────────────────────────────────────
-    #
-    # Coding specialist.
-    # Q4_K_M больше 12 GB VRAM, поэтому часть неизбежно будет offload.
-    [devstral]
-    model = ${modelsDir}/Devstral-Small-2-24B-Instruct-2512-Q4_K_M.gguf
-    ctx-size = 65536
-
-    temperature = 0.2
-    top-p = 0.9
-    min-p = 0.05
-
-
-    # ── NVIDIA Nemotron Nano 12B v2 ──────────────────────────────────────────
-    #
-    # Меньше и быстрее тяжёлых 24/27B моделей.
-    [nemotron]
-    model = ${modelsDir}/Nemotron-Nano-12B-v2-Q5_K_M.gguf
-    ctx-size = 65536
-
-    temperature = 0.2
-    top-p = 0.9
-    min-p = 0.05
-    
     # Other experimental models:
 
     [hydra]
@@ -109,15 +72,7 @@ let
     temperature = 0.8
     top-p = 0.9
     min-p = 0.05
-    repeat-penalty = 1.07
-    
-    [runeweaver]
-    model = ${modelsDir}/MN-12B-Runeweaver-RP-RU.Q6_K.gguf
-    ctx-size = 32768
-    temperature = 0.8
-    top-p = 0.9
-    min-p = 0.05
-    repeat-penalty = 1.07
+    repeat-penalty = 1.07    
   '';
 
 

@@ -32,6 +32,18 @@ let
     sed -E 's|/nix/store/[a-z0-9]{32}-comfyui-gguf-[^"]*|${ggufLeejet}|g' \
       ${comfyBase}/bin/comfy-ui > $out/bin/comfy-ui
     grep -q '${ggufLeejet}' $out/bin/comfy-ui
+    # venv torch 2.14.1+cu130 bundles its own nvidia-*-cu13 libs; the wrapper's
+    # nix CUDA 13.2 / cuDNN 9.22 entries on LD_LIBRARY_PATH conflict with them
+    # (CUDNN_STATUS_SUBLIBRARY_LOADING_FAILED / CUBLAS_STATUS_NOT_INITIALIZED).
+    # Strip those entries so torch resolves its bundled libraries.
+    sed -i -E 's|:?/nix/store/[0-9a-z]+-cuda13\.2-[^:"]*/lib||g' $out/bin/comfy-ui
+    # comfyui-nix экспортирует TRITON_LIBDEVICE_PATH=device.10.bc — относительный
+    # путь, из-за которого любая JIT-компиляция Triton-ядер падает с
+    # FileNotFoundError (кэш-ключ хеширует extern_libs относительно CWD).
+    # Удаляем экспорт: без него triton сам резолвит свой bundled
+    # backends/nvidia/lib/libdevice.10.bc по абсолютному пути.
+    sed -i '/export TRITON_LIBDEVICE_PATH=/d' $out/bin/comfy-ui
+    ! grep -q 'TRITON_LIBDEVICE_PATH' $out/bin/comfy-ui
     chmod +x $out/bin/comfy-ui
     ln -s comfy-ui $out/bin/comfyui
   '';

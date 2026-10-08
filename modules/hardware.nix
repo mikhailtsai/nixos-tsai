@@ -22,6 +22,10 @@
   };
   services.xserver.videoDrivers = [ "nvidia" ];
 
+  # GPU passthrough для Docker: без nvidia-container-toolkit `docker run --gpus all`
+  # не работает. Нужно для Strata (CUDA-контейнер) — см. ~/Strata.
+  hardware.nvidia-container-toolkit.enable = true;
+
   # Intel CPU
   hardware.cpu.intel.updateMicrocode = true;
   services.thermald.enable = false;  # отключён — мешает BIOS управлять вентиляторами (троттлит CPU вместо раскрутки кулеров)
