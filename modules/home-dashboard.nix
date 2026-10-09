@@ -6,11 +6,9 @@
 # сам бэкенд висит на 127.0.0.1). Вкладки:
 #   • WoW server (AzerothCore) — статус / вкл / выкл / перезапуск
 #   • Lineage II (L2 Living Worlds) — статус / вкл / выкл / перезапуск
-#   • Penpot                   — статус 7 контейнеров / вкл / выкл / перезапуск
-#   • Vikunja (Tasks)          — статус контейнеров / вкл / выкл / перезапуск
 #   • Forge Images             — статус / вкл / выкл / перезапуск + ссылка на LAN
 #
-# Схема (копия penpot-паттерна, тот же локальный CA → жене доверять не надо заново):
+# Схема (тот же локальный CA → жене доверять не надо заново):
 #   dnsmasq(home.tsai→192.168.1.57) → nginx(HTTPS) → 127.0.0.1:8088 (python-бэкенд)
 #                                                        │ sudo home-dashboard-ctl
 #                                                        └────────────→ systemctl
@@ -24,17 +22,6 @@ let
   l2Units  = [ "l2hf" ];
   forgeUnits = [ "forge-images" ];
   forgePort  = config.services.forge-images.port;
-  penpotContainers = [
-    "postgres" "valkey" "backend" "exporter" "mcp" "mailcatch" "frontend"
-  ];
-  penpotUnits = map (c: "docker-penpot-${c}") penpotContainers;
-
-  # Vikunja: имена контейнеров неоднородны (vikunja + vikunja-postgres)
-  vikunjaServices = [
-    { name = "vikunja";  unit = "docker-vikunja"; }
-    { name = "postgres"; unit = "docker-vikunja-postgres"; }
-  ];
-  vikunjaUnits = map (s: s.unit) vikunjaServices;
 
   systemctl = "${pkgs.systemd}/bin/systemctl";
 
@@ -46,8 +33,6 @@ let
     WOW="${lib.concatStringsSep " " wowUnits}"
     L2="${lib.concatStringsSep " " l2Units}"
     FORGE="${lib.concatStringsSep " " forgeUnits}"
-    PENPOT="${lib.concatStringsSep " " penpotUnits}"
-    VIKUNJA="${lib.concatStringsSep " " vikunjaUnits}"
     # --no-block: не ждём завершения запуска (сервера стартуют долго),
     # UI показывает прогресс поллингом статуса.
     case "''${1:-}" in
@@ -60,12 +45,6 @@ let
       forge-start)     exec ${systemctl} start   --no-block $FORGE ;;
       forge-stop)      exec ${systemctl} stop    --no-block $FORGE ;;
       forge-restart)   exec ${systemctl} restart --no-block $FORGE ;;
-      penpot-start)    exec ${systemctl} start   --no-block $PENPOT ;;
-      penpot-stop)     exec ${systemctl} stop    --no-block $PENPOT ;;
-      penpot-restart)  exec ${systemctl} restart --no-block $PENPOT ;;
-      vikunja-start)   exec ${systemctl} start   --no-block $VIKUNJA ;;
-      vikunja-stop)    exec ${systemctl} stop    --no-block $VIKUNJA ;;
-      vikunja-restart) exec ${systemctl} restart --no-block $VIKUNJA ;;
       *) echo "unknown action: ''${1:-}" >&2; exit 1 ;;
     esac
   '';
@@ -81,16 +60,12 @@ let
     SUDO       = "/run/wrappers/bin/sudo"  # setuid-обёртка NixOS (в PATH сервиса её нет)
     WOW_UNITS  = ${builtins.toJSON wowUnits}
     L2_UNITS   = ${builtins.toJSON l2Units}
-    PENPOT     = ${builtins.toJSON (lib.zipListsWith (n: u: { name = n; unit = u; }) penpotContainers penpotUnits)}
-    VIKUNJA    = ${builtins.toJSON vikunjaServices}
 
     # Разрешённые действия → аргумент ctl-обёртки
     ACTIONS = {
         "wow-start", "wow-stop", "wow-restart",
         "l2-start", "l2-stop", "l2-restart",
         "forge-start", "forge-stop", "forge-restart",
-        "penpot-start", "penpot-stop", "penpot-restart",
-        "vikunja-start", "vikunja-stop", "vikunja-restart",
     }
 
     def sh(args):
@@ -194,34 +169,7 @@ let
             "url": "http://${serverIP}:${toString forgePort}",
         }
 
-        conts, up, mem = [], 0, 0
-        for c in PENPOT:
-            p = unit_props(c["unit"])
-            act = p.get("ActiveState") == "active"
-            if act:
-                up += 1
-                mm = mem_mb(p.get("MemoryCurrent", ""))
-                if mm:
-                    mem += mm
-            conts.append({"name": c["name"], "active": act,
-                          "state": p.get("SubState", p.get("ActiveState", "?"))})
-        penpot = {"up": up, "total": len(PENPOT), "mem_mb": mem or None,
-                  "containers": conts}
-
-        vconts, vup, vmem = [], 0, 0
-        for c in VIKUNJA:
-            p = unit_props(c["unit"])
-            act = p.get("ActiveState") == "active"
-            if act:
-                vup += 1
-                mm = mem_mb(p.get("MemoryCurrent", ""))
-                if mm:
-                    vmem += mm
-            vconts.append({"name": c["name"], "active": act,
-                           "state": p.get("SubState", p.get("ActiveState", "?"))})
-        vikunja = {"up": vup, "total": len(VIKUNJA), "mem_mb": vmem or None,
-                   "containers": vconts}
-        return {"wow": wow, "l2": l2, "forge": forge, "penpot": penpot, "vikunja": vikunja}
+        return {"wow": wow, "l2": l2, "forge": forge}
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -314,7 +262,7 @@ in
                 { command = "${ctl}";   options = [ "NOPASSWD" ]; }];
   }];
 
-  # ── nginx vhost (HTTPS, тот же локальный CA что и у penpot) ────────────────
+  # ── nginx vhost (HTTPS, локальный CA из local-web.nix) ─────────────────────
   services.nginx.virtualHosts."home.tsai" = {
     forceSSL          = true;
     sslCertificate    = "/var/lib/home-dashboard/certs/home.tsai.crt";
@@ -326,7 +274,7 @@ in
   };
 
   # ── Локальный DNS: home.tsai → этот ПК ────────────────────────────────────
-  # Дописываем к address-списку из penpot.nix (списки в NixOS сливаются).
+  # Дописываем к address-списку из local-web.nix (списки в NixOS сливаются).
   services.dnsmasq.settings.address = [ "/home.tsai/${serverIP}" ];
   networking.extraHosts = "${serverIP} home.tsai";
 }

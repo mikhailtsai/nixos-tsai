@@ -2,7 +2,7 @@
 
 let
   modelsDir = "/home/${vars.username}/Storage/Models";
-  llamaPort = 8642;
+  inherit (vars.ai) llamaPort;
 
   modelsPreset = pkgs.writeText "llama-models.ini" ''
     version = 1
@@ -64,6 +64,29 @@ let
     min-p = 0.05
 
 
+    # ── Ternary Bonsai 2 27B ─────────────────────────────────────────────────
+    #
+    # 27B в ternary-весах (PTQ1_0, ~1.75 bpw, 5.95 GB) + vision-башня (mmproj).
+    # Требует ternary-ядер форка PrismML (пакет llama-cpp-prism) — основной
+    # llama.cpp эти файлы не грузит. Сэмплинги — рекомендованные карточкой
+    # модели для thinking-режима (top_k=20 обязателен, в GGUF его нет).
+    #
+    # 96K контекста: модель поддерживает 262144, а веса крошечные (~6.5 GB
+    # с mmproj), поэтому VRAM позволяет. KV q4_0 ≈ 30 KB/токен (гибридное
+    # внимание — растёт только на full-attention слоях): 65536 ≈ 1.96 GB,
+    # 98304 ≈ 2.9 GB ⇒ пик ~9.5 GB из 12 GB. Расширяет запас для агентских
+    # сессий, где контекст легко доходит до 40K+.
+    [bonsai]
+    model = ${modelsDir}/Ternary-Bonsai-2-27B-PTQ1_0.gguf
+    mmproj = ${modelsDir}/Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf
+    ctx-size = 98304
+
+    temperature = 1.0
+    top-p = 0.95
+    min-p = 0.05
+    top-k = 20
+
+
     # Other experimental models:
 
     [hydra]
@@ -110,29 +133,15 @@ let
   '';
 
 
-  # ── DeepSeek Harness Web UI (кнопка waybar) ─────────────────────────────────
-  # dsh при старте печатает авторизованный URL (с токеном) в stdout. Пишем его
-  # прямо в рантайм-файл (без пайпа — иначе node буферизует), откуда правый
-  # клик по кнопке берёт ссылку и открывает браузер уже с токеном.
-  deepseek-harness-web = pkgs.writeShellScript "deepseek-harness-web" ''
-    set -euo pipefail
-    url_file=/run/deepseek-harness/web.url
-    : > "$url_file"
-
-    exec ${pkgs.deepseek-harness}/bin/dsh web \
-      --host 127.0.0.1 --port 3080 --no-open \
-      >> "$url_file" 2>&1
-  '';
-
 in
 {
   # ── llama.cpp ───────────────────────────────────────────────────────────────
   services.llama-cpp = {
     enable = true;
 
-    package = pkgs.llama-cpp.override {
-      cudaSupport = true;
-    };
+    # PrismML-форк llama.cpp: ternary-ядра для Bonsai 2, плюс поддержка
+    # обычных квантов — весь локальный стек обслуживает один сервер-роутер.
+    package = pkgs.llama-cpp-prism;
 
     settings = {
       host = "127.0.0.1";
@@ -142,6 +151,10 @@ in
 
       # Одновременно загружена максимум одна модель.
       "models-max" = 1;
+
+      # Prometheus-метрики llama-server: панель (home/ai-monitor.nix) берёт
+      # оттуда среднюю скорость генерации (tokens_predicted / _seconds).
+      metrics = true;
     };
   };
 
@@ -182,47 +195,6 @@ in
       Unit = "llama-cpp-unload-sleeping.service";
     };
   };
-
-
-  # ── DeepSeek Harness Web UI — управляется кнопкой waybar ────────────────────
-  # Не стартует при загрузке (wantedBy = []); включается/выключается кнопкой,
-  # как WoW/L2. ЛКМ — toggle, ПКМ — открыть браузер (см. home/waybar.nix).
-  systemd.services.deepseek-harness = {
-    description = "DeepSeek Harness (dsh) Web UI";
-
-    after = [ "network.target" ];
-    wantedBy = [ ];
-
-    serviceConfig = {
-      Type = "simple";
-      User = vars.username;
-      Group = "users";
-
-      # /run/deepseek-harness/web.url — авторизованный URL для кнопки waybar.
-      RuntimeDirectory = "deepseek-harness";
-      RuntimeDirectoryMode = "0755";
-
-      # dsh запускает bash/rg/git как инструменты агента — нужен вменяемый PATH.
-      Environment = [
-        "PATH=${lib.makeBinPath (with pkgs; [ bashInteractive coreutils git ripgrep fd findutils gnused gnugrep nodejs ])}"
-      ];
-
-      ExecStart = deepseek-harness-web;
-      Restart = "on-failure";
-      RestartSec = "3s";
-    };
-  };
-
-  # Включение/выключение harness без пароля — для кнопки waybar (ЛКМ).
-  security.sudo.extraRules = [{
-    users = [ vars.username ];
-    commands = [
-      { command = "${pkgs.systemd}/bin/systemctl start deepseek-harness";
-        options = [ "NOPASSWD" ]; }
-      { command = "${pkgs.systemd}/bin/systemctl stop deepseek-harness";
-        options = [ "NOPASSWD" ]; }
-    ];
-  }];
 
 
   # ── OpenCode ────────────────────────────────────────────────────────────────

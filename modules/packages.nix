@@ -268,7 +268,6 @@ in
     codex
     chatgpt-desktop  # ChatGPT desktop (Chat + Work + Codex) — оф. .deb OpenAI, см. pkgs/chatgpt-desktop
     claude-desktop   # Claude Desktop (beta) — оф. .deb Anthropic, см. pkgs/claude-desktop
-    deepseek-harness # DeepSeek Harness (dsh) — CLI agent harness, см. pkgs/deepseek-harness
 
     # -------------------------------------------------------------------------
     # Веб-разработка
@@ -339,7 +338,7 @@ in
     # -------------------------------------------------------------------------
     gparted
     baobab
-    simple-mtpfs      # замена jmtpfs (удалён из nixpkgs как unmaintained)
+    go-mtpfs
 
     # -------------------------------------------------------------------------
     # Мониторинг оборудования
@@ -358,7 +357,7 @@ in
   };
 
   # Firefox с доверием к системному хранилищу сертификатов
-  # (ImportEnterpriseRoots → доверяет Tsai Local CA из security.pki → penpot.tsai без ручного импорта)
+  # (ImportEnterpriseRoots → доверяет Tsai Local CA из security.pki → *.tsai без ручного импорта)
   programs.firefox = {
     enable  = true;
     package = pkgs.firefox-bin;

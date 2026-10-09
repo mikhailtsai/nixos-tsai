@@ -16,4 +16,11 @@
     scale      = "1.25";
     width      = 3440;
   };
+
+  # Локальный AI-стек: адреса в одном месте, чтобы system-модуль (ai.nix) и
+  # home-скрипты панели (home/ai-monitor.nix) не расходились.
+  ai = {
+    llamaPort = 8642;        # llama.cpp router (NixOS-сервис)
+    comfyPort = 8188;        # ComfyUI
+  };
 }

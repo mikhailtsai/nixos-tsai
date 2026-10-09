@@ -23,7 +23,7 @@
   services.xserver.videoDrivers = [ "nvidia" ];
 
   # GPU passthrough для Docker: без nvidia-container-toolkit `docker run --gpus all`
-  # не работает. Нужно для Strata (CUDA-контейнер) — см. ~/Strata.
+  # не работает (пригодится для CUDA-контейнеров).
   hardware.nvidia-container-toolkit.enable = true;
 
   # Intel CPU

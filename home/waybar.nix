@@ -8,7 +8,7 @@
     height = 30;
     modules-left = [ "hyprland/workspaces" "hyprland/window" ];
     modules-center = [ "clock" ];
-    modules-right = [ "hyprland/language" "pulseaudio" "network" "battery" "custom/wow" "custom/l2" "custom/dsh" "custom/swaync" "tray" "custom/power" ];
+    modules-right = [ "hyprland/language" "pulseaudio" "network" "battery" "custom/ai" "custom/wow" "custom/l2" "custom/swaync" "tray" "custom/power" ];
 
     "hyprland/workspaces" = {
       format = "{name}";
@@ -56,6 +56,15 @@
       spacing = 10;
     };
 
+    "custom/ai" = {
+      exec = "ai-status";
+      on-click = "ai-details";
+      on-click-right = "ai-menu";
+      interval = 3;
+      return-type = "json";
+      tooltip = true;
+    };
+
     "custom/wow" = {
       exec = "wow-status";
       on-click = "wow-toggle";
@@ -67,15 +76,6 @@
     "custom/l2" = {
       exec = "l2-status";
       on-click = "l2-toggle";
-      interval = 5;
-      return-type = "json";
-      tooltip = true;
-    };
-
-    "custom/dsh" = {
-      exec = "dsh-status";
-      on-click = "dsh-toggle";
-      on-click-right = "dsh-open";
       interval = 5;
       return-type = "json";
       tooltip = true;
@@ -133,7 +133,7 @@
       color: #33ccff;
     }
 
-    #clock, #battery, #network, #pulseaudio, #tray, #custom-power, #language, #custom-wow, #custom-l2, #custom-dsh {
+    #clock, #battery, #network, #pulseaudio, #tray, #custom-power, #language, #custom-ai, #custom-wow, #custom-l2 {
       padding: 0 10px;
     }
 
@@ -142,11 +142,23 @@
       font-weight: bold;
     }
 
-    #custom-wow.running, #custom-l2.running, #custom-dsh.running {
+    #custom-ai.running {
       color: #00ff99;
     }
 
-    #custom-wow.stopped, #custom-l2.stopped, #custom-dsh.stopped {
+    #custom-ai.warn {
+      color: #ffcc00;
+    }
+
+    #custom-ai.stopped {
+      color: #888888;
+    }
+
+    #custom-wow.running, #custom-l2.running {
+      color: #00ff99;
+    }
+
+    #custom-wow.stopped, #custom-l2.stopped {
       color: #666666;
     }
 

@@ -93,15 +93,19 @@
           # Claude Desktop для Linux (beta) — официальный .deb из apt-репо Anthropic
           claude-desktop = ai.callPackage ./pkgs/claude-desktop/package.nix { };
 
-          # DeepSeek Harness (dsh) — открытый agent harness DeepSeek AI (npm-пакет)
-          deepseek-harness = ai.callPackage ./pkgs/deepseek-harness/package.nix { };
-
           # SynthCut by Relo — AI-видеоредактор (Electron + FFmpeg + MCP).
           # Linux-сборки у апстрима нет, собираем npm-монорепу из исходников.
           synthcut = ai.callPackage ./pkgs/synthcut/package.nix { };
 
           # Remotion MCP — сервер документации Remotion для AI-клиентов (opencode).
           remotion-mcp = ai.callPackage ./pkgs/remotion-mcp/package.nix { };
+
+          # PrismML-Eng/llama.cpp — форк с ternary-ядрами для Bonsai 2
+          # (PTQ1_0/PQ2_0). Основной llama.cpp эти кванты не запускает.
+          # Готовый CUDA 12.8-бинарь обёрнут под NixOS (см. package.nix).
+          llama-cpp-prism = final.callPackage ./pkgs/llama-cpp-prism/package.nix {
+            cudaPackages = final.cudaPackages_12_8;
+          };
 
           # См. комментарий у input nixpkgs-mindustry выше.
           inherit ((import nixpkgs-mindustry {
@@ -141,9 +145,8 @@
         modules = commonModules;
       };
 
-      # Удобный доступ к отдельным AI-пакетам: nix build .#deepseek-harness
+      # Удобный доступ к отдельным AI-пакетам: nix build .#synthcut
       packages.${system} = {
-        deepseek-harness = (pkgs.extend aiOverlay).deepseek-harness;
         synthcut = (pkgs.extend aiOverlay).synthcut;
         remotion-mcp = (pkgs.extend aiOverlay).remotion-mcp;
       };

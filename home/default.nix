@@ -11,6 +11,7 @@
     ./calendar.nix
     ./wallpaper.nix
     ./mtp.nix
+    ./ai-monitor.nix
   ];
 
   home.username    = vars.username;
@@ -21,6 +22,10 @@
     CHROME_EXECUTABLE = "${pkgs.chromium}/bin/chromium";
     GDK_DPI_SCALE     = "1.25";
     BASH_MAX_OUTPUT_LENGTH = "15000";
+    # opencode: не читать скиллы из ~/.claude (см. runtime-flags.ts)
+    OPENCODE_DISABLE_CLAUDE_CODE_SKILLS = "1";
+    # opencode: где лежит репо глобальных агентов (скрипты codeburn и т.п.)
+    OPENCODE_AGENTS_HOME = "${config.home.homeDirectory}/Projects/home/opencode-agents";
   };
 
   home.sessionPath = [ "$HOME/.local/bin" "$HOME/.npm-global/bin" ];

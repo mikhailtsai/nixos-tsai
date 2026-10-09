@@ -25,6 +25,7 @@
   nspr,
   nss,
   pango,
+  pipewire,
   systemd,
   libx11,
   libxcb,
@@ -77,6 +78,7 @@ stdenv.mkDerivation {
     nspr
     nss
     pango
+    pipewire
     systemd
     libx11
     libxcb

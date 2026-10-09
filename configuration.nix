@@ -12,9 +12,8 @@
     ./modules/x11-session.nix  # X11/XFCE-сессия для игр (GPU-скейлинг), рядом с Hyprland
     ./modules/packages.nix
     ./modules/storage.nix  # ~/Storage (открытый) + ~/Vault (LUKS по требованию)
-    ./modules/penpot.nix   # Penpot (self-hosted Figma) на https://penpot.tsai + MCP
+    ./modules/local-web.nix  # LAN-инфраструктура: nginx (HTTPS, локальный CA) + dnsmasq (*.tsai)
     ./modules/home-dashboard.nix  # Веб-панель управления сервисами на https://home.tsai
-    ./modules/vikunja.nix  # Vikunja (self-hosted таск-менеджер) на https://tasks.tsai + MCP
     ./modules/azerothcore  # WoW WotLK 3.3.5a private server (выключен пока enable = false)
     ./modules/l2-hf-bots        # Lineage II High Five + автономные боты (L2J Mobius CT 2.6)
     ./modules/forge-images.nix  # Forge Images (локальная генерация изображений) + LAN

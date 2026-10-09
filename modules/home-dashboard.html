@@ -24,14 +24,6 @@
     <span class="tab-glyph">🛡</span> Lineage II
     <span class="tab-dot" id="tabDotL2"></span>
   </button>
-  <button class="tab" role="tab" data-tab="penpot" aria-selected="false">
-    <span class="tab-glyph">◈</span> Penpot
-    <span class="tab-dot" id="tabDotPenpot"></span>
-  </button>
-  <button class="tab" role="tab" data-tab="vikunja" aria-selected="false">
-    <span class="tab-glyph">✓</span> Tasks
-    <span class="tab-dot" id="tabDotVikunja"></span>
-  </button>
   <button class="tab" role="tab" data-tab="forge" aria-selected="false">
     <span class="tab-glyph">✦</span> Forge
     <span class="tab-dot" id="tabDotForge"></span>
@@ -96,64 +88,6 @@
       <button class="btn btn-primary" data-action="l2-start">Запустить</button>
       <button class="btn" data-action="l2-restart" data-confirm="Перезапустить Lineage II сервер? Игроки и боты будут отключены.">Перезапустить</button>
       <button class="btn btn-danger" data-action="l2-stop" data-confirm="Остановить Lineage II сервер? Игроки и боты будут отключены.">Остановить</button>
-    </div>
-  </section>
-
-  <!-- ── Penpot ──────────────────────────────────────────────────────── -->
-  <section class="panel" id="panel-penpot" role="tabpanel" hidden>
-    <div class="hero">
-      <div class="hero-status">
-        <span class="status-dot" id="penpotDot"></span>
-        <div>
-          <div class="status-label" id="penpotState">—</div>
-          <div class="status-desc">Self-hosted дизайн-сервер · <span id="penpotCount">—</span></div>
-        </div>
-      </div>
-      <div class="metrics">
-        <div class="metric">
-          <span class="metric-key">Контейнеры</span>
-          <span class="metric-val" id="penpotUp">—</span>
-        </div>
-        <div class="metric">
-          <span class="metric-key">Адрес</span>
-          <a class="metric-val metric-link" href="https://penpot.tsai" target="_blank" rel="noopener">penpot.tsai&nbsp;↗</a>
-        </div>
-      </div>
-      <div class="chips" id="penpotChips"></div>
-    </div>
-    <div class="actions">
-      <button class="btn btn-primary" data-action="penpot-start">Запустить</button>
-      <button class="btn" data-action="penpot-restart" data-confirm="Перезапустить все контейнеры Penpot?">Перезапустить</button>
-      <button class="btn btn-danger" data-action="penpot-stop" data-confirm="Остановить Penpot?">Остановить</button>
-    </div>
-  </section>
-
-  <!-- ── Vikunja (Tasks) ─────────────────────────────────────────────── -->
-  <section class="panel" id="panel-vikunja" role="tabpanel" hidden>
-    <div class="hero">
-      <div class="hero-status">
-        <span class="status-dot" id="vikunjaDot"></span>
-        <div>
-          <div class="status-label" id="vikunjaState">—</div>
-          <div class="status-desc">Таск-/проект-менеджер · <span id="vikunjaCount">—</span></div>
-        </div>
-      </div>
-      <div class="metrics">
-        <div class="metric">
-          <span class="metric-key">Контейнеры</span>
-          <span class="metric-val" id="vikunjaUp">—</span>
-        </div>
-        <div class="metric">
-          <span class="metric-key">Адрес</span>
-          <a class="metric-val metric-link" href="https://tasks.tsai" target="_blank" rel="noopener">tasks.tsai&nbsp;↗</a>
-        </div>
-      </div>
-      <div class="chips" id="vikunjaChips"></div>
-    </div>
-    <div class="actions">
-      <button class="btn btn-primary" data-action="vikunja-start">Запустить</button>
-      <button class="btn" data-action="vikunja-restart" data-confirm="Перезапустить Vikunja?">Перезапустить</button>
-      <button class="btn btn-danger" data-action="vikunja-stop" data-confirm="Остановить Vikunja?">Остановить</button>
     </div>
   </section>
 
@@ -371,7 +305,7 @@
   .metric-link:hover { color: var(--accent); }
   .metric-link:focus-visible { outline: none; text-decoration: underline; }
 
-  /* ── penpot container chips ── */
+  /* ── container chips ── */
   .chips {
     display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px;
   }
@@ -497,35 +431,6 @@
         if (lbusy) boost();
       }
 
-      // Penpot
-      var p = d.penpot;
-      var all = p.up === p.total, none = p.up === 0;
-      document.getElementById("penpotState").textContent =
-        all ? "Запущен" : none ? "Остановлен" : "Частично";
-      setDot(document.getElementById("penpotDot"), all ? "on" : none ? "off" : "warn");
-      setDot(document.getElementById("tabDotPenpot"), all ? "on" : none ? "off" : "warn");
-      document.getElementById("penpotUp").textContent = p.up + " / " + p.total;
-      document.getElementById("penpotCount").textContent = p.up + " из " + p.total + " активно";
-      var chips = p.containers.map(function (c) {
-        return '<span class="chip"><span class="chip-dot ' + (c.active ? "on" : "off") +
-          '"></span>' + c.name + "</span>";
-      }).join("");
-      document.getElementById("penpotChips").innerHTML = chips;
-
-      // Vikunja (Tasks) — та же логика, что у penpot
-      var v = d.vikunja;
-      var vall = v.up === v.total, vnone = v.up === 0;
-      document.getElementById("vikunjaState").textContent =
-        vall ? "Запущен" : vnone ? "Остановлен" : "Частично";
-      setDot(document.getElementById("vikunjaDot"), vall ? "on" : vnone ? "off" : "warn");
-      setDot(document.getElementById("tabDotVikunja"), vall ? "on" : vnone ? "off" : "warn");
-      document.getElementById("vikunjaUp").textContent = v.up + " / " + v.total;
-      document.getElementById("vikunjaCount").textContent = v.up + " из " + v.total + " активно";
-      document.getElementById("vikunjaChips").innerHTML = v.containers.map(function (c) {
-        return '<span class="chip"><span class="chip-dot ' + (c.active ? "on" : "off") +
-          '"></span>' + c.name + "</span>";
-      }).join("");
-
       // Forge Images — одиночный юнит, логика как у l2
       var f = d.forge;
       if (f) {
@@ -618,9 +523,7 @@
     var LABEL = {
       "wow-start": "WoW запускается…", "wow-stop": "WoW остановлен", "wow-restart": "WoW перезапускается…",
       "l2-start": "Lineage II запускается…", "l2-stop": "Lineage II остановлен", "l2-restart": "Lineage II перезапускается…",
-      "forge-start": "Forge Images запускается…", "forge-stop": "Forge Images остановлен", "forge-restart": "Forge Images перезапускается…",
-      "penpot-start": "Penpot запускается…", "penpot-stop": "Penpot остановлен", "penpot-restart": "Penpot перезапускается…",
-      "vikunja-start": "Vikunja запускается…", "vikunja-stop": "Vikunja остановлен", "vikunja-restart": "Vikunja перезапускается…"
+      "forge-start": "Forge Images запускается…", "forge-stop": "Forge Images остановлен", "forge-restart": "Forge Images перезапускается…"
     };
 
     function act(btn) {

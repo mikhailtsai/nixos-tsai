@@ -18,7 +18,7 @@
             # Отмонтировать если уже смонтировано (переподключение)
             ${pkgs.fuse}/bin/fusermount -u $HOME/Phone 2>/dev/null || true
             sleep 1
-            ${pkgs.simple-mtpfs}/bin/simple-mtpfs $HOME/Phone && \
+            ${pkgs.go-mtpfs}/bin/go-mtpfs $HOME/Phone && \
               ${pkgs.libnotify}/bin/notify-send -i phone "Samsung" "Телефон подключён → ~/Phone"
           '';
         in

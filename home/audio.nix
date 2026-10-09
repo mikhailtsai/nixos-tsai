@@ -225,6 +225,17 @@ let
     "thunar-settings"       # "Thunar Preferences" — настройки есть внутри Thunar
     "org.pwmt.zathura"      # PDF-вьювер: скрыт из rofi, но остаётся обработчиком PDF
   ];
+
+  # reapack 1.2.5 не собирается под C++20/GCC15 (implicit 'this' capture → -Werror).
+  # Свежий nixpkgs перешёл на C++20 — глушим именно эту диагностику.
+  reapackExt = pkgs.reaper-reapack-extension.overrideAttrs (old: {
+    NIX_CFLAGS_COMPILE = (old.NIX_CFLAGS_COMPILE or "") + " -Wno-deprecated -Wno-error=deprecated";
+  });
+
+  # sws 2.14.0.7 не компилируется под C++20/GCC15 (brace-init enum) — форсируем C++17.
+  swsExt = pkgs.reaper-sws-extension.overrideAttrs (old: {
+    NIX_CFLAGS_COMPILE = (old.NIX_CFLAGS_COMPILE or "") + " -std=c++17";
+  });
 in
 
 {
@@ -243,8 +254,8 @@ in
     ext_dir="$HOME/.config/REAPER/UserPlugins"
     run mkdir -p "$ext_dir"
     for src in \
-      "${pkgs.reaper-sws-extension}/UserPlugins/reaper_sws-x86_64.so" \
-      "${pkgs.reaper-reapack-extension}/UserPlugins/reaper_reapack-x86_64.so"; do
+      "${swsExt}/UserPlugins/reaper_sws-x86_64.so" \
+      "${reapackExt}/UserPlugins/reaper_reapack-x86_64.so"; do
       dest="$ext_dir/$(basename "$src")"
       if [ ! -e "$dest" ]; then
         run install -m644 "$src" "$dest"
