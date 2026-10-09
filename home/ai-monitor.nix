@@ -188,12 +188,25 @@ let
 
   aiMonitor = pkgs.writeShellScriptBin "ai-monitor" ''
     set -u
+    . ${aiLib}
+    INTERVAL=''${AI_MONITOR_INTERVAL:-5}
+
+    # Без мерцания: курсор скрыт, кадр рисуется одним куском в синхронном
+    # режиме (DEC 2026, поддерживается kitty) и очищается только остаток снизу.
+    printf '\033[?25l'
+    trap 'printf "\033[?25h"' EXIT INT TERM
+
+    first=1
     while true; do
-      clear
-      ${aiReport}/bin/ai-report
-      printf '\n  %sобновление каждую секунду · Ctrl-C — выход%s' \
-        "$(printf '\033[90m')" "$(printf '\033[0m')"
-      sleep 1
+      frame=$(${aiReport}/bin/ai-report 2>&1)
+
+      printf '\033[?2026h'
+      if [ "$first" = 1 ]; then printf '\033[2J\033[H'; first=0; else printf '\033[H'; fi
+      printf '%s\n' "$frame"
+      printf '\033[J\n  \033[90mобновление каждые %s с · Ctrl-C — выход\033[0m\n' "$INTERVAL"
+      printf '\033[?2026l'
+
+      sleep "$INTERVAL"
     done
   '';
 

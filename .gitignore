@@ -17,3 +17,4 @@ wallpapers/*
 !wallpapers/wallpaper.jpg
 
 .opencode
+.opencode-evals/
