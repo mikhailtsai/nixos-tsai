@@ -569,11 +569,11 @@ in
 
     serviceConfig = {
       Type = "simple";
-      ExecStartPre = "-${config.virtualisation.docker.package}/bin/docker exec hermes-agent ${hermesPkgBin} dashboard --stop";
+      ExecStartPre = "-${config.virtualisation.docker.package}/bin/docker exec -u hermes hermes-agent ${hermesPkgBin} dashboard --stop";
       # -u hermes: docker резолвит имя внутри контейнера (/etc/passwd: hermes
       # 986:981), поэтому не хардкодим uid и не зависим от null в опциях модуля.
       ExecStart = "${config.virtualisation.docker.package}/bin/docker exec -u hermes hermes-agent ${hermesPkgBin} dashboard --no-open --skip-build --host 127.0.0.1 --port 9119";
-      ExecStop = "${config.virtualisation.docker.package}/bin/docker exec hermes-agent ${hermesPkgBin} dashboard --stop";
+      ExecStop = "${config.virtualisation.docker.package}/bin/docker exec -u hermes hermes-agent ${hermesPkgBin} dashboard --stop";
       Restart = "always";
       RestartSec = 5;
     };
