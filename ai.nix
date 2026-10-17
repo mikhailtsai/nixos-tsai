@@ -297,7 +297,10 @@ in
         # Проверены живыми запросами на Go-релее.
         aliases = {
           fast = "opencode-go/glm-5.3-flash";      # рутина, заголовки, разбор логов
-          strong = "opencode-go/deepseek-v4-pro";  # сложные рассуждения, архитектура
+          # deepseek-v4-pro сознательно НЕ используем: по качеству он хуже
+          # 4.1-flash, который и стоит по умолчанию.
+          strong = "opencode-go/glm-5.3";          # сложные рассуждения, архитектура
+          argon = "opencode-go/gemini-4-argon-contributor"; # Gemini-4 класс (data-training tier)
           code = "opencode-go/kimi-k2.7-code";     # правки кода
           luna = "opencode-go/gpt-6-luna";         # дешёвая мультимодалка / responses-wire
           glm = "opencode-go/glm-5.3";             # тяжёлое рассуждение
@@ -332,6 +335,13 @@ in
           model = "deepseek-flash";
         }
       ];
+
+      # Согласие на data-training tier (gemini-4-argon-contributor): без него
+      # Hermes в non-interactive режиме отказывается запускать модель.
+      # Решение пользователя: согласие дано. Отозвать — удалить ключ.
+      security = {
+        allow_data_training_tiers_noninteractive = true;
+      };
 
       # ── Про бесплатные модели на Go-релее ───────────────────────────────
       # Активный маршрут выше — OpenCode Go. Когда месячный бюджет Go на
