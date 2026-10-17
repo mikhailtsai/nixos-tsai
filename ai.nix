@@ -293,24 +293,37 @@ in
         default = "deepseek-v4.1-flash";
 
         # Псевдонимы для осознанного выбора модели: `/model strong`, `-m fast`,
-        # delegate_task(model="strong"). Формат значения — provider/model.
-        # Проверены живыми запросами на Go-релее.
+        # отдельный прогон `hermes chat -m <alias>`. Формат — provider/model.
+        # Набор отобран по публичным замерам (Artificial Analysis Intelligence
+        # Index v4.3.2, LMArena/swfte, Terminal-Bench 4.0, DeepSWE v1.1), а не
+        # по вкусу: цифры в комментариях — оттуда.
         aliases = {
-          fast = "opencode-go/glm-5.3-flash";      # рутина, заголовки, разбор логов
-          # deepseek-v4-pro сознательно НЕ используем: по качеству он хуже
-          # 4.1-flash, который и стоит по умолчанию.
-          strong = "opencode-go/glm-5.3";          # сложные рассуждения, архитектура
-          # gemini-4-argon-contributor в каталоге Go есть, но релей отвечает
-          # 400 ModelProtocolUnsupported на всех трёх wire (chat/responses/
-          # messages) — алиас не заводим, иначе каждый ход тратит попытку
-          # и уходит в fallback.
-          code = "opencode-go/kimi-k2.7-code";     # правки кода
-          luna = "opencode-go/gpt-6-luna";         # дешёвая мультимодалка / responses-wire
-          glm = "opencode-go/glm-5.3";             # тяжёлое рассуждение
-          kimi = "opencode-go/kimi-k3";            # максимум качества, дорого
-          grok = "opencode-go/grok-4.7";           # 500k, responses-wire
-          qwen = "opencode-go/qwen3.8-max";        # 1M, anthropic-wire
+          # AA 42, 117 t/s, самый дешёвый из «хороших»: рутина, извлечение, логи.
+          fast = "opencode-go/glm-5.3-flash";
+          # AA 51 при 168 t/s (втрое быстрее K3): сильный и быстрый одновременно.
+          mid = "opencode-go/glm-5.2";
+          # AA 57 — топ-4 в мире, лучший общий интеллект. Архитектура, сложное.
+          strong = "opencode-go/kimi-k3";
+          # Специализированная кодовая модель.
+          code = "opencode-go/kimi-k2.7-code";
+          # AA 46, Terminal-Bench 4.0 = 34.9 — лучший open-weight на агентных
+          # терминальных задачах. Многошаговые агентные прогоны.
+          mimo = "opencode-go/mimo-v2.6-pro";
+          # 1M контекста: огромные репозитории/логи.
+          qwen = "opencode-go/qwen3.8-max";
+          # $0.1/0.5, quality 89: массовая дешёвая рутина, мультимодалка.
+          luna = "opencode-go/gpt-6-luna";
+          # 500k, responses-wire.
+          grok = "opencode-go/grok-4.7";
         };
+
+        # НЕ заводим алиасов (сознательно):
+        #  * deepseek-v4-pro — по решению владельца хуже 4.1-flash;
+        #  * mimo-v2.5-pro — провал (DeepSWE 19.0, Terminal-Bench 2.1 = 1.5);
+        #  * hy3 — quality 76, заметно слабее линейки;
+        #  * gemini-4-argon-contributor — есть в каталоге, но релей отдаёт
+        #    400 ModelProtocolUnsupported на всех трёх wire (chat/responses/
+        #    messages) и Google-эндпоинта нет (404).
       };
 
       # Штатный per-turn failover Hermes: при rate-limit/ошибке сервера/
