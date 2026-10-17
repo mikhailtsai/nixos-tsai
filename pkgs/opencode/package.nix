@@ -66,7 +66,7 @@ stdenv.mkDerivation {
     # чтобы литерал /bin/bash можно было разрешить через PATH.
     # SHELL: бинарь падает в /bin/bash, которого на NixOS нет.
     # OPENCODE_DISABLE_AUTOUPDATE: обновляться в стор всё равно нельзя.
-    # OPENCODE_CHANNEL НЕ ставим — в бинаре 2.0.29 такой переменной нет.
+    # OPENCODE_CHANNEL НЕ ставим — в бинаре 2.0.32 такой переменной нет.
     makeWrapper $out/lib/opencode/opencode $out/bin/opencode \
       --prefix PATH : ${lib.makeBinPath [
         bashInteractive

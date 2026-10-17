@@ -1,4 +1,4 @@
-{ config, pkgs, lib, vars, ... }:
+{ config, pkgs, lib, vars, hermes-agent, ... }:
 
 let
   modelsDir = "/home/${vars.username}/Storage/Models";
@@ -194,6 +194,94 @@ in
       OnUnitActiveSec = "1min";
       Unit = "llama-cpp-unload-sleeping.service";
     };
+  };
+
+
+  # ── Hermes Agent (NousResearch) ─────────────────────────────────────────────
+  #
+  # Автономный агент NousResearch. Запускаем в контейнерном режиме: unit
+  # биндмаунтит /nix/store внутрь контейнера (ro) и стартует gateway из
+  # Nix-собранного пакета — хостовый Python 3.14/uv не трогаем, всё изолировано.
+  # Сеть у контейнера host-ная, поэтому gateway видит 127.0.0.1:${toString llamaPort}.
+  services.hermes-agent = {
+    enable = true;
+
+    # Контейнер с образом ubuntu:24.04 (container.backend = docker по умолчанию;
+    # virtualisation.docker.enable уже включён в modules/services.nix).
+    container.enable = true;
+
+    # Даём текущему пользователю CLI `hermes` в PATH и writable-симлинк
+    # ~/.hermes (конфиг/состояние живут в /var/lib/hermes, HERMES_HOME=/var/lib/hermes/.hermes).
+    addToSystemPackages = true;
+    container.hostUsers = [ vars.username ];
+
+    # Вариант пакета: messaging (+~33 MB к замыканию) вместо default/full.
+    # full тяжелее примерно на ~700 MB и тянет voice/tts-premium/matrix/
+    # azure/bedrock — здесь они не нужны; недостающие extras контейнер доставит сам.
+    # Нужны voice/tts/matrix — переключить на .default (или .tui).
+    package = hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.messaging;
+
+    # Ключи провайдера живут в /etc/hermes-agent/env (root:root, 0600) — файл
+    # создаёт наш activation-скрипт ниже, в стор и в git он не попадает.
+    # Записать ключ (без хотя бы одного — OpenRouter или Anthropic — gateway
+    # бесполезен):
+    #   sudoedit /etc/hermes-agent/env        # OPENROUTER_API_KEY=sk-or-...
+    #   sudo systemctl restart hermes-agent   # контейнер не пересоздаётся
+    #
+    # ВАЖНО: активация ДОПИСЫВАЕТ содержимое файла к $HERMES_HOME/.env, но сам
+    # .env каждый раз пересоздаётся с нуля (`install -m ... base $dest` в
+    # апстримном mkEnvScript), поэтому ключ, вписанный руками прямо в .env,
+    # теряется при первом же nixos-rebuild. Rebuild переживает только
+    # /etc/hermes-agent/env. Отсутствующий/пустой файл активацию не ломает
+    # (`if [ -r "$file" ]` → WARNING и дальше).
+    environmentFiles = [ "/etc/hermes-agent/env" ];
+
+    # GPU в контейнер не пробрасываем: llama.cpp крутится на хосте, а не здесь.
+    # Если агенту понадобится локальная RTX 4080, добавить:
+    #   container.extraOptions = [ "--gpus" "all" ];
+  };
+
+  # Файл с ключами создаём сами, декларативно. systemd.tmpfiles.rules для этого
+  # не годятся: активация (и чтение environmentFiles) выполняется РАНЬШЕ
+  # tmpfiles — апстримный модуль сам это фиксирует («activation runs before
+  # tmpfiles», nix/nixosModules.nix:461), а tmpfiles переигрываются отдельно
+  # через systemd-tmpfiles-resetup.service / sysinit-reactivation.target.
+  # Содержимое не трогаем — только существование, владелец и режим 0600.
+  system.activationScripts.hermes-agent-envfile = {
+    deps = [ "etc" ];
+    text = ''
+      install -d -m 0755 /etc/hermes-agent
+      if [ ! -e /etc/hermes-agent/env ]; then
+        install -m 0600 /dev/null /etc/hermes-agent/env
+      fi
+      chmod 0600 /etc/hermes-agent/env
+    '';
+  };
+  # Апстримный hermes-agent-setup читает environmentFiles, поэтому обязан идти
+  # после нас (deps склеиваются: ["users" ...] ++ ["hermes-agent-envfile"]).
+  system.activationScripts.hermes-agent-setup.deps = [ "hermes-agent-envfile" ];
+
+  # Бэкстопы против бесконечного crash-loop. Апстримный модуль оставляет
+  # Restart=always / RestartSec=5 (дефолты cfg.restart / cfg.restartSec), но НЕ
+  # ставит RestartPreventExitStatus, хотя генератор systemd-юнита апстрима
+  # (hermes_cli/gateway.py) помечает постоянные отказы конфига кодом 78
+  # (EX_CONFIG: коллизия токенов, dm_policy=open без GATEWAY_ALLOW_ALL_USERS и
+  # т.п.) и полагается именно на это правило, глуша ради него штатный лимит
+  # systemd (StartLimitIntervalSec=0). Без правила 78 отказ конфига — вечный
+  # рестарт.
+  # Missing API key сам по себе gateway не роняет: без включённых платформ он
+  # логирует «No messaging platforms enabled.» / «Gateway will continue running
+  # for cron job execution.» и продолжает жить (gateway/run_startup.py:1437-1440),
+  # так что дефолтный Restart оставляем.
+  systemd.services.hermes-agent = {
+    serviceConfig.RestartPreventExitStatus = 78;
+
+    # Штатный лимит systemd (10 s / 5 попыток) при RestartSec=5 не срабатывает
+    # никогда: попытка раз в 5 с навсегда. 5 попыток за 5 минут → юнит
+    # паркуется и виден как failed; после интервала рестарты возобновляются
+    # сами, либо вручную: sudo systemctl reset-failed hermes-agent.
+    startLimitIntervalSec = 300;
+    startLimitBurst = 5;
   };
 
 

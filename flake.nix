@@ -20,9 +20,16 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     awww.url = "git+https://codeberg.org/LGFae/awww";
     comfyui-nix.url = "github:utensils/comfyui-nix";
+
+    # Hermes Agent (NousResearch) — пин на тег, а не на main: апстрим заявляет
+    # Nix-поддержку как "Tier 2, best effort", и именно тег прогоняет его CI.
+    # nixpkgs.follows НЕ ставим: пакет (uv2nix + Python 3.14) собирается против
+    # собственного залоченного nixpkgs апстрима — это и есть протестированная
+    # CI-комбинация, а наш срез может сломать uv2nix/сборку Python 3.14.
+    hermes-agent.url = "github:NousResearch/hermes-agent/v0.22.2";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-ai, nixpkgs-mindustry, home-manager, awww, comfyui-nix, ... }:
+  outputs = { self, nixpkgs, nixpkgs-ai, nixpkgs-mindustry, home-manager, awww, comfyui-nix, hermes-agent, ... }:
     let
       system = "x86_64-linux";
       vars   = import ./vars.nix;
@@ -117,6 +124,7 @@
         ./configuration.nix
         ./ai.nix
         comfyui-nix.nixosModules.default
+        hermes-agent.nixosModules.default
         ./image-ai.nix
         { nixpkgs.overlays = [ aiOverlay ]; }
         home-manager.nixosModules.home-manager
@@ -131,7 +139,7 @@
     {
       nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = { inherit awww vars; };
+        specialArgs = { inherit awww vars hermes-agent; };
         modules = commonModules;
       };
 
