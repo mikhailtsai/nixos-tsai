@@ -4,6 +4,10 @@ let
   modelsDir = "/home/${vars.username}/Storage/Models";
   inherit (vars.ai) llamaPort;
 
+  # Каталог состояния hermes-agent (services.hermes-agent.stateDir); внутри —
+  # .hermes (то же самое, что $HERMES_HOME). Используется в активации ниже.
+  stateDir = config.services.hermes-agent.stateDir;
+
   modelsPreset = pkgs.writeText "llama-models.ini" ''
     version = 1
 
@@ -353,6 +357,45 @@ in
   # Апстримный hermes-agent-setup читает environmentFiles, поэтому обязан идти
   # после нас (deps склеиваются: ["users" ...] ++ ["hermes-agent-envfile"]).
   system.activationScripts.hermes-agent-setup.deps = [ "hermes-agent-envfile" ];
+
+  # ── Права на $HERMES_HOME (=${stateDir}/.hermes) ───────────────────────────
+  #
+  # Хостовый CLI (пользователь из container.hostUsers) читает
+  # $HERMES_HOME/.container-mode, чтобы понять, что команду надо выполнять в
+  # контейнере; для этого нужен traverse-бит на самом каталоге .hermes.
+  # Апстримный модуль объявляет этому каталогу 2770 hermes:hermes
+  # (systemd.tmpfiles.rules + активация в nixosModules.nix) — именно чтобы CLI
+  # у члена группы hermes имел доступ. Но сам Hermes возвращает 0700: при
+  # записи auth.json, лежащего ПРЯМО в $HERMES_HOME, вызывается
+  # hermes_cli/auth.py:_save_private_json → hermes_constants.py:
+  # secure_parent_dir(), который жёстко делает chmod(parent, 0o700) и, в
+  # отличие от соседнего apply_secure_dir_policy(), НЕ учитывает managed/
+  # container-режим. Итог: после первой же записи auth store (первый boot,
+  # логин, ротация креденшла) каталог снова 0700, и `hermes config …` падает с
+  # PermissionError: [Errno 13] на /home/${vars.username}/.hermes/.container-mode.
+  #
+  # Идём ПОСЛЕ апстримного hermes-agent-setup и возвращаем объявленный апстримом
+  # режим: 2770 (setgid — чтобы runtime-подкаталоги наследовали группу hermes).
+  # Порядок «сначала chown, потом chmod» важен: chown сбрасывает setgid.
+  # Группа — только hermes, для остальных нуль: в каталоге лежат auth.json,
+  # .env и sessions, поэтому world-readable здесь недопустим. Цена решения:
+  # CLI работает только у членов группы hermes (это и есть контракт
+  # container.hostUsers) — сторонние пользователи хоста в $HERMES_HOME не
+  # попадают. Файлы-секреты (.env, auth.json) и их режимы не трогаем.
+  #
+  # Остаточный риск: любая запись auth.json в рантайме снова ставит 0700.
+  # Тогда CLI разблокируется повторно, без sudo (leet в группе docker):
+  #   docker exec hermes-agent chmod 2770 /data/.hermes
+  # либо повторной активацией (nixos-rebuild switch / reboot). Полностью
+  # лечится только апстримом: secure_parent_dir() должен уважать managed-
+  # режим так же, как apply_secure_dir_policy().
+  system.activationScripts.hermes-agent-state-perms = {
+    deps = [ "hermes-agent-setup" ];
+    text = ''
+      chown ${config.services.hermes-agent.user}:${config.services.hermes-agent.group} ${stateDir}/.hermes
+      chmod 2770 ${stateDir}/.hermes
+    '';
+  };
 
   # Бэкстопы против бесконечного crash-loop. Апстримный модуль оставляет
   # Restart=always / RestartSec=5 (дефолты cfg.restart / cfg.restartSec), но НЕ
