@@ -221,12 +221,61 @@ in
     # Нужны voice/tts/matrix — переключить на .default (или .tui).
     package = hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.messaging;
 
+    # ── Маршрутизация LLM ───────────────────────────────────────────────────
+    #
+    # Основной маршрут — бесплатная модель через встроенный zen-релей OpenCode:
+    # `model.provider` принимает голый id встроенного провайдера (префикс
+    # `custom:` нужен только для собственных эндпоинтов), а блоки
+    # `providers.<имя>` для встроенных провайдеров не требуются вовсе.
+    # settings рендерится через builtins.toJSON в $HERMES_HOME/config.yaml
+    # (JSON — это корректный YAML), вложенные attrsets → YAML-ключи 1:1.
+    settings = {
+      model = {
+        provider = "opencode-zen";
+        default = "deepseek-v4.1-flash-free";
+      };
+
+      # Штатный per-turn failover Hermes: при rate-limit/ошибке сервера/
+      # авторизации сессия переключается на платный DeepSeek и возвращается
+      # обратно на следующий ход. Для встроенных провайдеров достаточно
+      # provider + model (base_url/key_env наследуются); запись без любого
+      # из этих полей игнорируется. fallback.min_switch_reset_seconds = 0
+      # по умолчанию — переключаемся сразу.
+      fallback_providers = [
+        {
+          provider = "deepseek";
+          model = "deepseek-flash";
+        }
+      ];
+
+      # ── На будущее: OpenCode Go ─────────────────────────────────────────
+      # Если появится подписка OpenCode Go, раскомментировать и заменить
+      # маршрут — это единственное изменение (плюс OPENCODE_GO_API_KEY в
+      # /etc/hermes-agent/env ниже):
+      #   model = {
+      #     provider = "opencode-go";
+      #     default  = "deepseek-v4.1-flash";
+      #   };
+    };
+
     # Ключи провайдера живут в /etc/hermes-agent/env (root:root, 0600) — файл
     # создаёт наш activation-скрипт ниже, в стор и в git он не попадает.
-    # Записать ключ (без хотя бы одного — OpenRouter или Anthropic — gateway
-    # бесполезен):
-    #   sudoedit /etc/hermes-agent/env        # OPENROUTER_API_KEY=sk-or-...
-    #   sudo systemctl restart hermes-agent   # контейнер не пересоздаётся
+    # Содержимое — по одной переменной вида KEY=value на строку (inline-комментарии
+    # в самом файле не использовать):
+    #   OPENCODE_ZEN_API_KEY   — обязателен; основной маршрут. Токен берётся из
+    #                            локального ~/.local/share/opencode/auth.json
+    #                            (провайдер `opencode`) или из
+    #                            https://opencode.ai/console.
+    #   DEEPSEEK_API_KEY       — только для платного фолбэка,
+    #                            https://platform.deepseek.com/api_keys.
+    #   OPENCODE_GO_API_KEY    — на будущее, если появится подписка OpenCode Go.
+    #   OPENCODE_ZEN_BASE_URL  — запасной вариант, если релей /zen/v1 перестанет
+    #                            отвечать: Hermes использует эту переменную как
+    #                            переопределение базы (например,
+    #                            https://opencode.ai/inference/openai/v1).
+    # Записать ключи и применить (контейнер не пересоздаётся):
+    #   sudoedit /etc/hermes-agent/env
+    #   sudo systemctl restart hermes-agent
     #
     # ВАЖНО: активация ДОПИСЫВАЕТ содержимое файла к $HERMES_HOME/.env, но сам
     # .env каждый раз пересоздаётся с нуля (`install -m ... base $dest` в
