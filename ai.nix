@@ -261,19 +261,47 @@ in
     # Ключи провайдера живут в /etc/hermes-agent/env (root:root, 0600) — файл
     # создаёт наш activation-скрипт ниже, в стор и в git он не попадает.
     # Содержимое — по одной переменной вида KEY=value на строку (inline-комментарии
-    # в самом файле не использовать):
-    #   OPENCODE_ZEN_API_KEY   — обязателен; основной маршрут. Токен берётся из
-    #                            локального ~/.local/share/opencode/auth.json
-    #                            (провайдер `opencode`) или из
-    #                            https://opencode.ai/console.
-    #   DEEPSEEK_API_KEY       — только для платного фолбэка,
-    #                            https://platform.deepseek.com/api_keys.
-    #   OPENCODE_GO_API_KEY    — на будущее, если появится подписка OpenCode Go.
-    #   OPENCODE_ZEN_BASE_URL  — запасной вариант, если релей /zen/v1 перестанет
-    #                            отвечать: Hermes использует эту переменную как
-    #                            переопределение базы (например,
-    #                            https://opencode.ai/inference/openai/v1).
-    # Записать ключи и применить (контейнер не пересоздаётся):
+    # в самом файле не использовать). Рекомендуемое содержимое целиком:
+    #
+    #   OPENCODE_ZEN_API_KEY=<токен>
+    #   OPENCODE_GO_API_KEY=${OPENCODE_ZEN_API_KEY}
+    #
+    # Почему два имени, а значение одно: opencode-zen и opencode-go — два
+    # отдельных ВСТРОЕННЫХ провайдера Hermes, и каждый читает строго своё имя
+    # (plugins/model-providers/opencode-zen/__init__.py:120 → OPENCODE_ZEN_API_KEY;
+    # opencode-go/__init__.py:126 → OPENCODE_GO_API_KEY). Общей переменной
+    # OPENCODE_API_KEY в апстриме нет, а remap key_env встроенного провайдера из
+    # Nix невозможен. Поэтому полный токен вписывается ровно один раз — в
+    # OPENCODE_ZEN_API_KEY, — а вторая строка лишь ссылается на него. Загрузчик
+    # .env раскрывает ${VAR} по порядку (hermes_cli/env_loader.py:359-364),
+    # поэтому значение физически лежит в одном месте, в первой строке.
+    #
+    #   DEEPSEEK_API_KEY=<токен>   — нужен только для платного фолбэка,
+    #                                https://platform.deepseek.com/api_keys.
+    #
+    # Откуда opencode-токен: service-account key в консоли OpenCode
+    # (https://opencode.ai/console, формат oc_sk_…). Ключ привязан к workspace,
+    # и один и тот же ключ годится и для Zen, и для Go. Собственный креденшл
+    # локального CLI лежит отдельно, в ~/.local/share/opencode/auth.json, и
+    # контейнеру не подходит — в /etc/hermes-agent/env нужен именно console-ключ.
+    #
+    # Про бесплатный тир (403 FreeTierError): free-тир привязан к клиенту и
+    # аккаунту OpenCode, поэтому запрос от «не-OpenCode» клиента получает на
+    # /zen/v1/chat/completions ответ 403 FreeTierError. Это не поломка: штатный
+    # failover сам уводит сессию на платный DeepSeek (fallback_providers выше) и
+    # вернёт обратно на следующем ходе. Что искать в логах:
+    #   FreeTierError              → free-маршрут отверг клиента (см. выше);
+    #   AuthError: Missing API key. → токен не дошёл до контейнера (проверить
+    #                                 /etc/hermes-agent/env и перезапуск);
+    #   Invalid credential          → токен есть, но не принят (проверить
+    #                                 workspace/срок жизни ключа в консоли).
+    #
+    # OPENCODE_ZEN_BASE_URL  — запасной выход, если релей /zen/v1 сменит путь:
+    #                          Hermes использует её как переопределение базы
+    #                          (например, https://opencode.ai/inference/openai/v1).
+    # OPENCODE_GO_BASE_URL   — то же самое для opencode-go.
+    #
+    # Записать ключи и применить (контейнер НЕ пересоздаётся):
     #   sudoedit /etc/hermes-agent/env
     #   sudo systemctl restart hermes-agent
     #
