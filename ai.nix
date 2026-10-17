@@ -268,7 +268,14 @@ in
     # запечатан. Рантайм-обход невозможен: sys.path фиксируется при старте
     # интерпретатора, а окружение контейнера приходит из docker run.
     # Это единственный Nix-кусок, который даёт модели «из коробки».
-    extraDependencyGroups = [ "anthropic" ];
+    # ВАЖНО: `package` выше — это вариант `.messaging`, т.е. уже
+    # `minimal.override { extraDependencyGroups = [ "messaging" ]; }`.
+    # Модуль применяет наш override поверх него, и `extraDependencyGroups`
+    # ЗАМЕНЯЕТ список, а не дополняет его: с одним `[ "anthropic" ]` из
+    # замыкания выпадали python-telegram-bot/discord.py/slack-sdk и гейтвей
+    # падал с «No adapter available for enabled telegram». Поэтому перечисляем
+    # обе группы явно.
+    extraDependencyGroups = [ "messaging" "anthropic" ];
 
     # ── Маршрутизация LLM ───────────────────────────────────────────────────
     #
