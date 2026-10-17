@@ -34,11 +34,28 @@ let
   hermesStatePermsCmd = ''
     # $HERMES_HOME: владелец hermes:hermes, режим 2770 (group traverse + setgid).
     _hermes_perm_want="${config.services.hermes-agent.user}:${config.services.hermes-agent.group}"
+    _hermes_perm_fix() {
+      [ -e "$1" ] || return 0
+      [ "$(stat -c '%a' "$1" 2>/dev/null || true)" = "$2" ] || chmod "$2" "$1" || true
+    }
     if [ -d ${hermesHome} ]; then
       _hermes_perm_have="$(stat -c '%a %U:%G' ${hermesHome} 2>/dev/null || true)"
       if [ "$_hermes_perm_have" != "2770 $_hermes_perm_want" ]; then
         chown "$_hermes_perm_want" ${hermesHome} || true
         chmod 2770 ${hermesHome} || true
+      fi
+      # backups/ — хостовый CLI (при addToSystemPackages config.yaml = 0660, то
+      # есть запись для группы hermes) кладёт сюда копию config.yaml перед
+      # записью. Без g+w каждый старт печатает «Could not back up …
+      # Permission denied». Содержимое — копии того же config.yaml, поэтому
+      # 2770 доступ не расширяет.
+      _hermes_perm_fix ${hermesHome}/backups 2770
+      _hermes_perm_fix ${hermesHome}/backups/config 2770
+      # Сами файлы бэкапов хостовый CLI перезаписывает по имени
+      # (config.yaml.good.<время>), а созданы они 0600 — группе нужен w.
+      if [ -d ${hermesHome}/backups/config ]; then
+        find ${hermesHome}/backups/config -maxdepth 1 -type f ! -perm 0660 \
+          -exec chmod 0660 {} + 2>/dev/null || true
       fi
     fi
   '';
@@ -171,6 +188,32 @@ let
       done
   '';
 
+  # ── Ярлык «Hermes» в меню приложений ────────────────────────────────────────
+  #
+  # Это НЕ Electron-приложение из flake (packages.desktop): в container-режиме
+  # main() форвардит ЛЮБУЮ команду внутрь контейнера ещё до разбора подкоманд,
+  # поэтому `hermes desktop` пытался бы запустить Electron там, где нет дисплея;
+  # а сам Electron-процесс на хосте пишет в $HERMES_HOME (auth.json 0600,
+  # config.yaml) от имени пользователя хоста. Веб-панель — тот же UI, уже
+  # работает (в т.ч. с телефона), поэтому ярлык открывает её в окне Chromium
+  # (app mode): без адресной строки и вкладок, ощущается как отдельное
+  # приложение.
+  hermesIcon = pkgs.runCommand "hermes-icon" { } ''
+    mkdir -p $out/share/icons/hicolor/scalable/apps
+    cp ${hermes-agent}/assets/icon-master.svg $out/share/icons/hicolor/scalable/apps/hermes.svg
+  '';
+
+  hermesDashboardItem = pkgs.makeDesktopItem {
+    name = "hermes-dashboard";
+    desktopName = "Hermes";
+    genericName = "AI Agent";
+    comment = "Hermes Agent dashboard";
+    exec = "${pkgs.chromium}/bin/chromium --app=http://127.0.0.1:9119";
+    icon = "hermes";
+    categories = [ "Development" "Network" ];
+    terminal = false;
+    startupNotify = false;
+  };
 
 in
 {
@@ -664,5 +707,7 @@ in
   environment.systemPackages = with pkgs; [
     opencode-desktop
     opencode
+    hermesIcon
+    hermesDashboardItem
   ];
 }
