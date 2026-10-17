@@ -9,13 +9,32 @@ let
   stateDir = config.services.hermes-agent.stateDir;
 
   # Возврат объявленного апстримом режима на $HERMES_HOME. Одна и та же команда
-  # нужна в двух местах: в активации (baseline при nixos-rebuild switch/boot) и
-  # в path-юните ниже (event-driven, потому что апстримный secure_parent_dir()
-  # перебивает режим в рантайме). Держим текст в let, чтобы не дублировать
-  # литералы; владелец/группа/путь берутся из опций модуля, не хардкодятся.
+  # нужна в двух местах: в активации (baseline при switch/boot) и в сервисе
+  # таймера ниже (периодический re-assert, потому что апстримный
+  # secure_parent_dir() перебивает режим в рантайме). Держим текст в let, чтобы
+  # не дублировать литералы; владелец/группа/путь берутся из опций модуля.
+  #
+  # Скрипт намеренно идемпотентный, «тихий» и БЕЗ exit: если режим уже верный —
+  # не делаем ничего; если каталога ещё нет (активация не отработала) — это
+  # успешный no-op. Ни одна ветка не может вернуть non-zero (stat/chown/chmod
+  # прикрыты `|| true`), поэтому сервис не «залипает» в failed и не валит
+  # nixos-rebuild switch. `exit` тут был бы ещё и опасен: в активации этот же
+  # текст выполняется в общем контексте сниппета, и exit оборвал бы активацию.
+  #
+  # Порядок «сначала chown, потом chmod» важен: chown сбрасывает setgid.
+  # Пишем ТОЛЬКО метаданные самого каталога: ни auth.json, ни другие файлы
+  # внутри не открываются и не меняются, поэтому триггерить самих себя нечем.
+  hermesHome = "${stateDir}/.hermes";
   hermesStatePermsCmd = ''
-    chown ${config.services.hermes-agent.user}:${config.services.hermes-agent.group} ${stateDir}/.hermes
-    chmod 2770 ${stateDir}/.hermes
+    # $HERMES_HOME: владелец hermes:hermes, режим 2770 (group traverse + setgid).
+    _hermes_perm_want="${config.services.hermes-agent.user}:${config.services.hermes-agent.group}"
+    if [ -d ${hermesHome} ]; then
+      _hermes_perm_have="$(stat -c '%a %U:%G' ${hermesHome} 2>/dev/null || true)"
+      if [ "$_hermes_perm_have" != "2770 $_hermes_perm_want" ]; then
+        chown "$_hermes_perm_want" ${hermesHome} || true
+        chmod 2770 ${hermesHome} || true
+      fi
+    fi
   '';
 
   modelsPreset = pkgs.writeText "llama-models.ini" ''
@@ -395,7 +414,7 @@ in
   #
   # Остаточный риск: любая запись auth.json в рантайме снова ставит 0700.
   # Активация чинит это только при switch/boot, поэтому ниже добавлен
-  # event-driven возврат режима (systemd.paths.hermes-agent-state-perms);
+  # периодический re-assert таймером (systemd.timers.hermes-agent-state-perms);
   # аварийная ручная разблокировка без sudo (leet в группе docker):
   #   docker exec hermes-agent chmod 2770 /data/.hermes
   # Полностью лечится только апстримом: secure_parent_dir() должен уважать
@@ -405,51 +424,60 @@ in
     text = hermesStatePermsCmd;
   };
 
-  # ── Event-driven возврат режима на $HERMES_HOME ─────────────────────────────
+  # ── Периодический возврат режима на $HERMES_HOME ────────────────────────────
   #
   # Зачем: активация отрабатывает только при nixos-rebuild switch/boot, а
   # апстримный secure_parent_dir() ставит 0700 в рантайме — при каждой записи
   # $HERMES_HOME/auth.json (логин, ротация/refresh креденшла). Между этими
-  # событиями хостовый CLI молча ломается с PermissionError на
-  # .container-mode (см. подробный разбор в комментарии к активации выше),
-  # поэтому режим возвращаем событийно, а не только при пересборке.
+  # событиями хостовый CLI молча ломается с PermissionError на .container-mode
+  # (подробный разбор — в комментарии к активации выше).
   #
-  # Слушаем именно ФАЙЛ auth.json, а не каталог: каталог пишется раз в
-  # несколько секунд (gateway_state.json и прочая runtime-мелочь), и path-юнит
-  # на каталоге дёргал бы сервис постоянно. PathChanged покрывает запись,
-  # атомарную подмену (temp+rename) и (re)создание файла; PathExists даёт
-  # baseline: если auth.json уже существует, режим приводится в порядок сразу
-  # после старта юнита, не дожидаясь первой записи.
+  # ПОЧЕМУ ТАЙМЕР, А НЕ systemd.path* — НЕ «оптимизировать» обратно в path-юнит!
+  # Первая версия (2026-10-17, откачена) слушала auth.json через
+  # pathConfig.PathChanged + PathExists. PathExists — условие УРОВНЕВОЕ: пока
+  # файл существует, условие истинно, поэтому сразу после завершения сервиса
+  # systemd перевооружал watch и стартовал сервис снова; ≥5 стартов внутри
+  # дефолтного StartLimitIntervalSec=10 с → «Start request repeated too
+  # quickly» → start-limit-hit у сервиса + unit-start-limit-hit у path-юнита →
+  # switch-to-configuration счёл новый юнит упавшим и завершил активацию с
+  # 4/NOPERMISSION (при этом каждый отдельный запуск сервиса был
+  # status=0/SUCCESS). Таймер такой шторм породить не может в принципе: запуск
+  # раз в минуту — на порядок реже окна лимита, а связи «состояние файла →
+  # немедленный перезапуск» здесь нет.
   #
-  # Сервис трогает ТОЛЬКО каталог: файл auth.json не открываем и не пишем,
-  # поэтому его mtime/ctime не меняются и path-юнит не перезапускается сам
-  # собой (обратной связи нет). Повторные срабатывания безвредны: команды
-  # идемпотентны, chown с последующим chmod всегда даёт один и тот же
-  # результат; отдельный TriggerLimit* не нужен — дефолт
-  # (TriggerLimitIntervalSec=2 s, TriggerLimitBurst=200) и так гасит любой
-  # шторм, а само срабатывание — это chown+chmod по одному каталогу, без
-  # чтения и записи содержимого.
+  # Значения таймера: OnBootSec=30 s — первый re-assert вскоре после boot (на
+  # уже работающей системе этот момент в прошлом, поэтому при (пере)запуске
+  # таймера сервис срабатывает сразу, и после nixos-rebuild switch состояние
+  # чинится немедленно). OnUnitActiveSec=1 min — периодический re-assert:
+  # худшее время восстановления CLI ≈ 1 мин + AccuracySec. AccuracySec=30 s —
+  # systemd может сдвигать срабатывание в пределах окна, чтобы будить CPU вместе
+  # с другими таймерами; дефолтная 1 min дала бы худший случай ~2 мин, что для
+  # «CLI молча сломался» многовато.
   #
-  # wantedBy = multi-user.target: путь-юнит должен подниматься после boot сам,
-  # иначе он не переживёт reboot. Каталог .hermes к этому моменту уже создан
-  # активацией/tmpfiles, поэтому watch не промахивается.
-  #
-  # Остаточная внешняя зависимость: корректность держится на апстримном
-  # поведении secure_parent_dir(). Когда апстрим научится уважать managed-режим
-  # (как apply_secure_dir_policy), юнит станет no-op, но останется безвредным.
+  # Сервис не должен уметь ни завалить пересборку, ни «залипнуть»:
+  #  * unitConfig.StartLimitIntervalSec = 0 — документированный systemd способ
+  #    выключить rate limiting, поэтому start-limit-hit невозможен даже при
+  #    массовых перезапусках. Безопасно: команда идемпотентна и не трогает
+  #    ничего, что её же триггерит (только метаданные одного каталога).
+  #  * скрипт (см. let выше) делает chown/chmod только при неверном состоянии,
+  #    а при отсутствии каталога молча выходит с нулём.
+  #  * сервис нигде не «wanted» и запускается только таймером через Unit=,
+  #    поэтому в момент switch стартует лишь таймер — мгновенно и без сбоев.
   systemd.services.hermes-agent-state-perms = {
     description = "Return group traverse (2770) on the Hermes state dir (HERMES_HOME)";
     # root по умолчанию: каталог принадлежит hermes, chown/chmod по чужому пути.
     serviceConfig.Type = "oneshot";
+    unitConfig.StartLimitIntervalSec = 0;
     script = hermesStatePermsCmd;
   };
 
-  systemd.paths.hermes-agent-state-perms = {
-    wantedBy = [ "multi-user.target" ];
-    pathConfig = {
+  systemd.timers.hermes-agent-state-perms = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
       Unit = "hermes-agent-state-perms.service";
-      PathChanged = "${stateDir}/.hermes/auth.json";
-      PathExists = "${stateDir}/.hermes/auth.json";
+      OnBootSec = "30s";
+      OnUnitActiveSec = "1min";
+      AccuracySec = "30s";
     };
   };
 
