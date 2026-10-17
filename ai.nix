@@ -71,15 +71,15 @@ let
     # llama.cpp эти файлы не грузит. Сэмплинги — рекомендованные карточкой
     # модели для thinking-режима (top_k=20 обязателен, в GGUF его нет).
     #
-    # 96K контекста: модель поддерживает 262144, а веса крошечные (~6.5 GB
-    # с mmproj), поэтому VRAM позволяет. KV q4_0 ≈ 30 KB/токен (гибридное
-    # внимание — растёт только на full-attention слоях): 65536 ≈ 1.96 GB,
-    # 98304 ≈ 2.9 GB ⇒ пик ~9.5 GB из 12 GB. Расширяет запас для агентских
-    # сессий, где контекст легко доходит до 40K+.
+    # 192K контекста: модель поддерживает 262144, веса крошечные (~6.3 GB
+    # веса + mmproj), KV q4_0 растёт только на full-attention слоях
+    # (гибрид SSM/attention: full_attention_interval=4 ⇒ 16 из 64 слоёв) и
+    # стоит ~18 KB/токен: 98304 ≈ 1.69 GiB, 196608 ≈ 3.38 GiB.
+    # Пик llama-server ~9.9 GiB из 12 GB; не запускать ComfyUI одновременно.
     [bonsai]
     model = ${modelsDir}/Ternary-Bonsai-2-27B-PTQ1_0.gguf
     mmproj = ${modelsDir}/Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf
-    ctx-size = 98304
+    ctx-size = 196608
 
     temperature = 1.0
     top-p = 0.95

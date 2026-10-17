@@ -1,9 +1,9 @@
 {
   "name": "remotion-mcp",
-  "version": "4.0.532",
+  "version": "4.0.535",
   "private": true,
   "description": "Remotion's Model Context Protocol server (packaged for NixOS)",
   "dependencies": {
-    "@remotion/mcp": "4.0.532"
+    "@remotion/mcp": "4.0.535"
   }
 }

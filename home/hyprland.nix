@@ -338,17 +338,19 @@
     # ==========================================================================
     # СКРИНШОТЫ
     # ==========================================================================
-    # --freeze морозит экран (hyprpicker-оверлей поверх игры), потом выделяешь
-    # Область → буфер обмена
-    bind = , Print, exec, grimblast --freeze copy area
+    # shot-area: выделение области; в полноэкранной игре (держит мышь, focus
+    # не отдаёт из-за stay_focused) без интерактива снимает весь монитор.
+    bind = , Print, exec, shot-area
     # Весь экран → буфер обмена
     bind = SHIFT, Print, exec, grimblast copy screen
     # Область → редактор swappy → сохранить/скопировать
-    bind = $mod, Print, exec, grimblast --freeze save area - | swappy -f -
+    bind = $mod, Print, exec, shot-area edit
     # Весь экран → редактор swappy
     bind = $mod SHIFT, Print, exec, grimblast save screen - | swappy -f -
     # Активное окно → буфер
     bind = ALT, Print, exec, grimblast --freeze copy active
+    # Аварийная отмена зависшего выделения области
+    bind = $mod, ESCAPE, exec, shot-cancel
 
     # Перевод текста с экрана → OCR → на русский → буфер + уведомление
     bind = $mod, SPACE, exec, screen-translate

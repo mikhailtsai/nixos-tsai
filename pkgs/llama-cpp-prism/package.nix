@@ -27,7 +27,7 @@
 }:
 
 let
-  version = "b10754-2459f68";
+  version = "b10777-e3de715";
 in
 stdenv.mkDerivation {
   pname = "llama-cpp-prism";
@@ -37,7 +37,7 @@ stdenv.mkDerivation {
     url =
       "https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-${version}"
       + "/llama-prism-${version}-bin-linux-cuda-12.8-x64.tar.gz";
-    hash = "sha256-8sdEAfwkJWWViLS1KGjG0NrVZUtbolSco074UjEtua8=";
+    hash = "sha256-qlPiJWJ25oM4bv/ci+NLO9HN9k753F1JLaaSJ6xSUxs=";
   };
 
   sourceRoot = "llama-prism-${version}";
