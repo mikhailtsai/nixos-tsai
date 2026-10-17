@@ -8,6 +8,16 @@ let
   # .hermes (то же самое, что $HERMES_HOME). Используется в активации ниже.
   stateDir = config.services.hermes-agent.stateDir;
 
+  # Возврат объявленного апстримом режима на $HERMES_HOME. Одна и та же команда
+  # нужна в двух местах: в активации (baseline при nixos-rebuild switch/boot) и
+  # в path-юните ниже (event-driven, потому что апстримный secure_parent_dir()
+  # перебивает режим в рантайме). Держим текст в let, чтобы не дублировать
+  # литералы; владелец/группа/путь берутся из опций модуля, не хардкодятся.
+  hermesStatePermsCmd = ''
+    chown ${config.services.hermes-agent.user}:${config.services.hermes-agent.group} ${stateDir}/.hermes
+    chmod 2770 ${stateDir}/.hermes
+  '';
+
   modelsPreset = pkgs.writeText "llama-models.ini" ''
     version = 1
 
@@ -384,17 +394,63 @@ in
   # попадают. Файлы-секреты (.env, auth.json) и их режимы не трогаем.
   #
   # Остаточный риск: любая запись auth.json в рантайме снова ставит 0700.
-  # Тогда CLI разблокируется повторно, без sudo (leet в группе docker):
+  # Активация чинит это только при switch/boot, поэтому ниже добавлен
+  # event-driven возврат режима (systemd.paths.hermes-agent-state-perms);
+  # аварийная ручная разблокировка без sudo (leet в группе docker):
   #   docker exec hermes-agent chmod 2770 /data/.hermes
-  # либо повторной активацией (nixos-rebuild switch / reboot). Полностью
-  # лечится только апстримом: secure_parent_dir() должен уважать managed-
-  # режим так же, как apply_secure_dir_policy().
+  # Полностью лечится только апстримом: secure_parent_dir() должен уважать
+  # managed-режим так же, как apply_secure_dir_policy().
   system.activationScripts.hermes-agent-state-perms = {
     deps = [ "hermes-agent-setup" ];
-    text = ''
-      chown ${config.services.hermes-agent.user}:${config.services.hermes-agent.group} ${stateDir}/.hermes
-      chmod 2770 ${stateDir}/.hermes
-    '';
+    text = hermesStatePermsCmd;
+  };
+
+  # ── Event-driven возврат режима на $HERMES_HOME ─────────────────────────────
+  #
+  # Зачем: активация отрабатывает только при nixos-rebuild switch/boot, а
+  # апстримный secure_parent_dir() ставит 0700 в рантайме — при каждой записи
+  # $HERMES_HOME/auth.json (логин, ротация/refresh креденшла). Между этими
+  # событиями хостовый CLI молча ломается с PermissionError на
+  # .container-mode (см. подробный разбор в комментарии к активации выше),
+  # поэтому режим возвращаем событийно, а не только при пересборке.
+  #
+  # Слушаем именно ФАЙЛ auth.json, а не каталог: каталог пишется раз в
+  # несколько секунд (gateway_state.json и прочая runtime-мелочь), и path-юнит
+  # на каталоге дёргал бы сервис постоянно. PathChanged покрывает запись,
+  # атомарную подмену (temp+rename) и (re)создание файла; PathExists даёт
+  # baseline: если auth.json уже существует, режим приводится в порядок сразу
+  # после старта юнита, не дожидаясь первой записи.
+  #
+  # Сервис трогает ТОЛЬКО каталог: файл auth.json не открываем и не пишем,
+  # поэтому его mtime/ctime не меняются и path-юнит не перезапускается сам
+  # собой (обратной связи нет). Повторные срабатывания безвредны: команды
+  # идемпотентны, chown с последующим chmod всегда даёт один и тот же
+  # результат; отдельный TriggerLimit* не нужен — дефолт
+  # (TriggerLimitIntervalSec=2 s, TriggerLimitBurst=200) и так гасит любой
+  # шторм, а само срабатывание — это chown+chmod по одному каталогу, без
+  # чтения и записи содержимого.
+  #
+  # wantedBy = multi-user.target: путь-юнит должен подниматься после boot сам,
+  # иначе он не переживёт reboot. Каталог .hermes к этому моменту уже создан
+  # активацией/tmpfiles, поэтому watch не промахивается.
+  #
+  # Остаточная внешняя зависимость: корректность держится на апстримном
+  # поведении secure_parent_dir(). Когда апстрим научится уважать managed-режим
+  # (как apply_secure_dir_policy), юнит станет no-op, но останется безвредным.
+  systemd.services.hermes-agent-state-perms = {
+    description = "Return group traverse (2770) on the Hermes state dir (HERMES_HOME)";
+    # root по умолчанию: каталог принадлежит hermes, chown/chmod по чужому пути.
+    serviceConfig.Type = "oneshot";
+    script = hermesStatePermsCmd;
+  };
+
+  systemd.paths.hermes-agent-state-perms = {
+    wantedBy = [ "multi-user.target" ];
+    pathConfig = {
+      Unit = "hermes-agent-state-perms.service";
+      PathChanged = "${stateDir}/.hermes/auth.json";
+      PathExists = "${stateDir}/.hermes/auth.json";
+    };
   };
 
   # Бэкстопы против бесконечного crash-loop. Апстримный модуль оставляет
