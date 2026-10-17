@@ -300,7 +300,10 @@ in
           # deepseek-v4-pro сознательно НЕ используем: по качеству он хуже
           # 4.1-flash, который и стоит по умолчанию.
           strong = "opencode-go/glm-5.3";          # сложные рассуждения, архитектура
-          argon = "opencode-go/gemini-4-argon-contributor"; # Gemini-4 класс (data-training tier)
+          # gemini-4-argon-contributor в каталоге Go есть, но релей отвечает
+          # 400 ModelProtocolUnsupported на всех трёх wire (chat/responses/
+          # messages) — алиас не заводим, иначе каждый ход тратит попытку
+          # и уходит в fallback.
           code = "opencode-go/kimi-k2.7-code";     # правки кода
           luna = "opencode-go/gpt-6-luna";         # дешёвая мультимодалка / responses-wire
           glm = "opencode-go/glm-5.3";             # тяжёлое рассуждение
