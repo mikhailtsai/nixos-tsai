@@ -14,6 +14,7 @@
     ./modules/storage.nix  # ~/Storage (открытый) + ~/Vault (LUKS по требованию)
     ./modules/local-web.nix  # LAN-инфраструктура: nginx (HTTPS, локальный CA) + dnsmasq (*.tsai)
     ./modules/home-dashboard.nix  # Веб-панель управления сервисами на https://home.tsai
+    ./modules/opencode-web.nix  # opencode headless web через Tailscale
     ./modules/azerothcore  # WoW WotLK 3.3.5a private server (выключен пока enable = false)
     ./modules/l2-hf-bots        # Lineage II High Five + автономные боты (L2J Mobius CT 2.6)
     ./modules/forge-images.nix  # Forge Images (локальная генерация изображений) + LAN

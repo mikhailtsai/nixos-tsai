@@ -63,19 +63,9 @@
               })
             else base;
 
-          opencode =
-            let base = ai.opencode; in
-            if ai.lib.versionOlder base.version "1.18.34" then
-              base.overrideAttrs (old: rec {
-                version = "1.18.34";
-                src = ai.fetchFromGitHub {
-                  owner = "anomalyco";
-                  repo = "opencode";
-                  tag = "v${version}";
-                  hash = "sha256-ygTBG79utH0A1Dmg+tjEeTA633bLO0OfDdi6AwwQnZw=";
-                };
-              })
-            else base;
+          # opencode V2 (2.x) — в nixpkgs пока нет пакета (PR #569770 не смержен),
+          # поэтому берём официальный npm-артефакт, см. pkgs/opencode.
+          opencode = final.callPackage ./pkgs/opencode/package.nix { };
 
           # claude-code в nixpkgs отстаёт на 1-3 патча; пакет принимает manifest
           # аргументом, поэтому подставляем свежий (pkgs/claude-code/update.sh).
@@ -147,6 +137,7 @@
 
       # Удобный доступ к отдельным AI-пакетам: nix build .#synthcut
       packages.${system} = {
+        opencode = (pkgs.extend aiOverlay).opencode;
         synthcut = (pkgs.extend aiOverlay).synthcut;
         remotion-mcp = (pkgs.extend aiOverlay).remotion-mcp;
       };

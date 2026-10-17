@@ -2,12 +2,12 @@
 # URL у OpenAI НЕ версионированный (.../latest/...), поэтому хеш приходится
 # пере-пинивать руками при каждом их релизе: ./update.sh
 {
-  version = "26.1007.21434";
+  version = "26.1013.40934";
 
   sources = {
     x86_64-linux = {
       url = "https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb";
-      hash = "sha256-J2tTQcPXSyYdOtUhBvf6ft3gaEHkdn/ipAy1QJmx8+0=";
+      hash = "sha256-PKWef5pmQbni+5rWgGg3hLWrgCb/dBj7ISoOvl3zodc=";
     };
   };
 }

@@ -1,22 +1,47 @@
 #!/usr/bin/env bash
-# Пере-пинить source.nix на последний релиз opencode-desktop (anomalyco/opencode).
-# Хеши берём из nix store prefetch-file (SRI sha256), как и для остальных .deb-пакетов.
+# Пере-пинить source.nix на последнюю версию opencode-desktop (V2).
+#
+# Источник версии — API обновлений самого приложения:
+#   https://opencode.ai/update/api/latest/desktop/opencode
+# В ответе: .version и .metadata.files["<имя-ассета>"].{url,sha256}.
+# Сами .deb лежат на https://opencode.ai/files/bin/<version>/ (не на GitHub Releases).
+#
+# Хеши всё равно пересчитываем через nix store prefetch-file (SRI sha256),
+# чтобы значение в source.nix гарантированно совпадало с тем, что зафиксирует Nix.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-api="https://api.github.com/repos/anomalyco/opencode/releases/latest"
-tag=$(curl -fsSL "$api" | python3 -c 'import sys,json; print(json.load(sys.stdin)["tag_name"])')
-version="${tag#v}"
+api="https://opencode.ai/update/api/latest/desktop/opencode"
+json=$(curl -fsSL "$api")
+
+version=$(printf '%s' "$json" | python3 -c 'import sys,json; print(json.load(sys.stdin)["version"])')
+
+# Имена .deb-ассетов в API: amd64 = x86_64-linux, arm64 = aarch64-linux.
+deb_name() {
+  case "$1" in
+    amd64) echo "opencode-desktop-linux-amd64.deb" ;;
+    arm64) echo "opencode-desktop-linux-arm64.deb" ;;
+    *) echo "update.sh: неизвестная архитектура '$1'" >&2; exit 1 ;;
+  esac
+}
+
+asset_url() {
+  local name="$1"
+  printf '%s' "$json" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['metadata']['files']['$name']['url'])"
+}
 
 fetch_hash() {
-  local arch="$1"
-  local url="https://github.com/anomalyco/opencode/releases/download/${tag}/opencode-desktop-linux-${arch}.deb"
+  local url="$1"
   nix store prefetch-file --json --hash-type sha256 "$url" \
     | python3 -c 'import sys,json; print(json.load(sys.stdin)["hash"])'
 }
 
-amd64=$(fetch_hash amd64)
-arm64=$(fetch_hash arm64)
+amd64_url=$(asset_url "$(deb_name amd64)")
+arm64_url=$(asset_url "$(deb_name arm64)")
+
+amd64=$(fetch_hash "$amd64_url")
+arm64=$(fetch_hash "$arm64_url")
 
 cat > source.nix <<EOF2
 {
@@ -24,11 +49,11 @@ cat > source.nix <<EOF2
 
   sources = {
     x86_64-linux = {
-      url = "https://github.com/anomalyco/opencode/releases/download/$tag/opencode-desktop-linux-amd64.deb";
+      url = "$amd64_url";
       hash = "$amd64";
     };
     aarch64-linux = {
-      url = "https://github.com/anomalyco/opencode/releases/download/$tag/opencode-desktop-linux-arm64.deb";
+      url = "$arm64_url";
       hash = "$arm64";
     };
   };
