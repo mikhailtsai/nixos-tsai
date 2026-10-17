@@ -291,6 +291,20 @@ in
       model = {
         provider = "opencode-go";
         default = "deepseek-v4.1-flash";
+
+        # Псевдонимы для осознанного выбора модели: `/model strong`, `-m fast`,
+        # delegate_task(model="strong"). Формат значения — provider/model.
+        # Проверены живыми запросами на Go-релее.
+        aliases = {
+          fast = "opencode-go/glm-5.3-flash";      # рутина, заголовки, разбор логов
+          strong = "opencode-go/deepseek-v4-pro";  # сложные рассуждения, архитектура
+          code = "opencode-go/kimi-k2.7-code";     # правки кода
+          luna = "opencode-go/gpt-6-luna";         # дешёвая мультимодалка / responses-wire
+          glm = "opencode-go/glm-5.3";             # тяжёлое рассуждение
+          kimi = "opencode-go/kimi-k3";            # максимум качества, дорого
+          grok = "opencode-go/grok-4.7";           # 500k, responses-wire
+          qwen = "opencode-go/qwen3.8-max";        # 1M, anthropic-wire
+        };
       };
 
       # Штатный per-turn failover Hermes: при rate-limit/ошибке сервера/
@@ -300,7 +314,19 @@ in
       # provider + model (base_url/key_env наследуются); запись без любого
       # из этих полей игнорируется. fallback.min_switch_reset_seconds = 0
       # по умолчанию — переключаемся сразу.
+      # Порядок = приоритет: сначала добираем подписку Go другими моделями
+      # (дешёвая flash → сильная kimi), и только потом платный DeepSeek.
+      # При лимите primary уходит в cooldown (до сброса у провайдера или
+      # экспоненциальный бэкофф) и запрос идёт по цепочке вниз.
       fallback_providers = [
+        {
+          provider = "opencode-go";
+          model = "glm-5.3-flash";
+        }
+        {
+          provider = "opencode-go";
+          model = "kimi-k2.6";
+        }
         {
           provider = "deepseek";
           model = "deepseek-flash";
