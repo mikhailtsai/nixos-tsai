@@ -25,6 +25,12 @@ let
   # Пишем ТОЛЬКО метаданные самого каталога: ни auth.json, ни другие файлы
   # внутри не открываются и не меняются, поэтому триггерить самих себя нечем.
   hermesHome = "${stateDir}/.hermes";
+
+  # CLI внутри контейнера: /data/current-package — симлинк на актуальный пакет,
+  # его обновляет активация. В PATH образа (ubuntu:24.04) его нет, поэтому
+  # docker exec требует полный путь.
+  hermesPkgBin = "/data/current-package/bin/hermes";
+
   hermesStatePermsCmd = ''
     # $HERMES_HOME: владелец hermes:hermes, режим 2770 (group traverse + setgid).
     _hermes_perm_want="${config.services.hermes-agent.user}:${config.services.hermes-agent.group}"
@@ -413,8 +419,10 @@ in
   # попадают. Файлы-секреты (.env, auth.json) и их режимы не трогаем.
   #
   # Остаточный риск: любая запись auth.json в рантайме снова ставит 0700.
-  # Активация чинит это только при switch/boot, поэтому ниже добавлен
-  # периодический re-assert таймером (systemd.timers.hermes-agent-state-perms);
+  # Активация чинит это только при switch/boot, поэтому ниже режим возвращают
+  # два независимых юнита, оба — через один и тот же guarded-сервис:
+  #   * systemd.paths.hermes-agent-state-perms  — событийно, реакция сразу;
+  #   * systemd.timers.hermes-agent-state-perms — раз в минуту, бэкстоп;
   # аварийная ручная разблокировка без sudo (leet в группе docker):
   #   docker exec hermes-agent chmod 2770 /data/.hermes
   # Полностью лечится только апстримом: secure_parent_dir() должен уважать
@@ -432,7 +440,7 @@ in
   # событиями хостовый CLI молча ломается с PermissionError на .container-mode
   # (подробный разбор — в комментарии к активации выше).
   #
-  # ПОЧЕМУ ТАЙМЕР, А НЕ systemd.path* — НЕ «оптимизировать» обратно в path-юнит!
+  # ЗАПРЕТ: НЕ ДОБАВЛЯТЬ PathExists — ни сюда, ни в path-юнит ниже!
   # Первая версия (2026-10-17, откачена) слушала auth.json через
   # pathConfig.PathChanged + PathExists. PathExists — условие УРОВНЕВОЕ: пока
   # файл существует, условие истинно, поэтому сразу после завершения сервиса
@@ -441,9 +449,13 @@ in
   # quickly» → start-limit-hit у сервиса + unit-start-limit-hit у path-юнита →
   # switch-to-configuration счёл новый юнит упавшим и завершил активацию с
   # 4/NOPERMISSION (при этом каждый отдельный запуск сервиса был
-  # status=0/SUCCESS). Таймер такой шторм породить не может в принципе: запуск
-  # раз в минуту — на порядок реже окна лимита, а связи «состояние файла →
-  # немедленный перезапуск» здесь нет.
+  # status=0/SUCCESS). Именно поэтому у сервиса стоит
+  # StartLimitIntervalSec=0: любой непредусмотренный шторм теперь безвреден.
+  #
+  # PathChanged (см. path-юнит ниже) — наоборот, событийный (edge) триггер: он
+  # срабатывает только на реальное изменение, а не на «условие истинно»,
+  # поэтому шторма не даёт. Таймер при этом остаётся бэкстопом на случай, если
+  # path-юнит не сможет встать на watch.
   #
   # Значения таймера: OnBootSec=30 s — первый re-assert вскоре после boot (на
   # уже работающей системе этот момент в прошлом, поэтому при (пере)запуске
@@ -481,6 +493,30 @@ in
     };
   };
 
+  # ── Мгновенная реакция на сброс режима (событийный триггер) ─────────────────
+  #
+  # Таймер выше лечит каталог с задержкой до ~1.5 мин. Здесь — быстрый путь:
+  # watch на сам каталог, срабатывает в ту же секунду, когда Hermes переписал
+  # auth.json (атомарная замена файла = событие в каталоге).
+  #
+  # Только PathChanged, без PathExists: PathChanged — событийный (edge) триггер,
+  # он не «истинен постоянно», поэтому не может устроить storm из прошлого
+  # инцидента (см. комментарий выше). Петли тоже нет: сервис guarded — при уже
+  # верном режиме он не делает ни chown, ни chmod, то есть не порождает
+  # метаданных-событий, на которые мог бы среагировать сам.
+  #
+  # StartLimitIntervalSec=0 на самом path-юните — вторая страховка: даже если
+  # каталог начнут менять сотнями событий в секунду, systemd не откажется
+  # запускать сервис (а лишние запуски — дешёвые no-op).
+  systemd.paths.hermes-agent-state-perms = {
+    wantedBy = [ "multi-user.target" ];
+    unitConfig.StartLimitIntervalSec = 0;
+    pathConfig = {
+      Unit = "hermes-agent-state-perms.service";
+      PathChanged = hermesHome;
+    };
+  };
+
   # Бэкстопы против бесконечного crash-loop. Апстримный модуль оставляет
   # Restart=always / RestartSec=5 (дефолты cfg.restart / cfg.restartSec), но НЕ
   # ставит RestartPreventExitStatus, хотя генератор systemd-юнита апстрима
@@ -502,6 +538,45 @@ in
     # сами, либо вручную: sudo systemctl reset-failed hermes-agent.
     startLimitIntervalSec = 300;
     startLimitBurst = 5;
+  };
+
+  # ── Веб-панель (браузерный интерфейс без команд) ────────────────────────────
+  #
+  # `hermes dashboard` — SPA + backend: чат с агентом, сессии, cron, kanban,
+  # MCP, память, файлы, терминалы, настройки. Слушает ТОЛЬКО loopback:
+  # локальный биндинг не требует аутентификации, а публичный биндинг с июня
+  # 2026 всегда требует auth-провайдера (флаг --insecure больше ничего не
+  # отключает), поэтому наружу не биндим — для телефона есть SSH-туннель:
+  #   ssh -L 9119:127.0.0.1:9119 <user>@<host>
+  #
+  # Запускаем ВНУТРИ контейнера от uid/gid пользователя hermes: под root
+  # процесс создал бы root-owned файлы в $HERMES_HOME и гейтвей (uid hermes)
+  # потерял бы к ним доступ. --skip-build: dist уже собран в пакете
+  # (share/hermes-agent/web_dist), npm в контейнере не нужен.
+  #
+  # ExecStartPre со «-» гасит забытый вручную экземпляр — иначе порт занят и
+  # юнит уходил бы в рестарт-луп. Restart=always безопасен: у панели нет
+  # idle-выхода (idle-watchdog включается только для SSH-изолированных
+  # бэкендов).
+  systemd.services.hermes-dashboard = {
+    description = "Hermes Agent web dashboard (http://127.0.0.1:9119)";
+    after = [ "hermes-agent.service" ];
+    requires = [ "hermes-agent.service" ];
+    # Перезапуск гейтвея = рестарт контейнера = смерть всех процессов внутри,
+    # включая панель. PartOf перезапускает и её, иначе порт остался бы мёртвым.
+    partOf = [ "hermes-agent.service" ];
+    wantedBy = [ "multi-user.target" ];
+
+    serviceConfig = {
+      Type = "simple";
+      ExecStartPre = "-${config.virtualisation.docker.package}/bin/docker exec hermes-agent ${hermesPkgBin} dashboard --stop";
+      # -u hermes: docker резолвит имя внутри контейнера (/etc/passwd: hermes
+      # 986:981), поэтому не хардкодим uid и не зависим от null в опциях модуля.
+      ExecStart = "${config.virtualisation.docker.package}/bin/docker exec -u hermes hermes-agent ${hermesPkgBin} dashboard --no-open --skip-build --host 127.0.0.1 --port 9119";
+      ExecStop = "${config.virtualisation.docker.package}/bin/docker exec hermes-agent ${hermesPkgBin} dashboard --stop";
+      Restart = "always";
+      RestartSec = 5;
+    };
   };
 
 
