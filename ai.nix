@@ -223,7 +223,9 @@ in
 
     # ── Маршрутизация LLM ───────────────────────────────────────────────────
     #
-    # Основной маршрут — бесплатная модель через встроенный zen-релей OpenCode:
+    # Основной маршрут — платный релей OpenCode Go (подписка на том же
+    # workspace, что и console-ключ). Бесплатный zen-маршрут недостижим для
+    # сторонних клиентов (403 FreeTierError, см. заметку ниже).
     # `model.provider` принимает голый id встроенного провайдера (префикс
     # `custom:` нужен только для собственных эндпоинтов), а блоки
     # `providers.<имя>` для встроенных провайдеров не требуются вовсе.
@@ -231,12 +233,13 @@ in
     # (JSON — это корректный YAML), вложенные attrsets → YAML-ключи 1:1.
     settings = {
       model = {
-        provider = "opencode-zen";
-        default = "deepseek-v4.1-flash-free";
+        provider = "opencode-go";
+        default = "deepseek-v4.1-flash";
       };
 
       # Штатный per-turn failover Hermes: при rate-limit/ошибке сервера/
-      # авторизации сессия переключается на платный DeepSeek и возвращается
+      # авторизации (в т.ч. исчерпанный месячный бюджет Go или истёкшая
+      # подписка) сессия переключается на платный DeepSeek и возвращается
       # обратно на следующий ход. Для встроенных провайдеров достаточно
       # provider + model (base_url/key_env наследуются); запись без любого
       # из этих полей игнорируется. fallback.min_switch_reset_seconds = 0
@@ -248,14 +251,14 @@ in
         }
       ];
 
-      # ── На будущее: OpenCode Go ─────────────────────────────────────────
-      # Если появится подписка OpenCode Go, раскомментировать и заменить
-      # маршрут — это единственное изменение (плюс OPENCODE_GO_API_KEY в
-      # /etc/hermes-agent/env ниже):
-      #   model = {
-      #     provider = "opencode-go";
-      #     default  = "deepseek-v4.1-flash";
-      #   };
+      # ── Про бесплатные модели на Go-релее ───────────────────────────────
+      # Активный маршрут выше — OpenCode Go. Когда месячный бюджет Go на
+      # deepseek-v4.1-flash исчерпан, бесплатные модели остаются доступны
+      # именно через Go-релей, и их можно поставить следующим эшелоном
+      # (второй записью в fallback_providers). Точные id бесплатных моделей
+      # НЕ хардкодить здесь — читать из каталога:
+      #   GET https://opencode.ai/zen/go/v1/models
+      # (в списке искать id, содержащие `free`).
     };
 
     # Ключи провайдера живут в /etc/hermes-agent/env (root:root, 0600) — файл
@@ -263,38 +266,51 @@ in
     # Содержимое — по одной переменной вида KEY=value на строку (inline-комментарии
     # в самом файле не использовать). Рекомендуемое содержимое целиком:
     #
-    #   OPENCODE_ZEN_API_KEY=<токен>
-    #   OPENCODE_GO_API_KEY=${OPENCODE_ZEN_API_KEY}
+    #   OPENCODE_GO_API_KEY=<oc_sk_…>
+    #   OPENCODE_ZEN_API_KEY=${OPENCODE_GO_API_KEY}
+    #   DEEPSEEK_API_KEY=<ключ DeepSeek>
     #
-    # Почему два имени, а значение одно: opencode-zen и opencode-go — два
+    # Почему два имени, а значение одно: opencode-go и opencode-zen — два
     # отдельных ВСТРОЕННЫХ провайдера Hermes, и каждый читает строго своё имя
-    # (plugins/model-providers/opencode-zen/__init__.py:120 → OPENCODE_ZEN_API_KEY;
-    # opencode-go/__init__.py:126 → OPENCODE_GO_API_KEY). Общей переменной
+    # (plugins/model-providers/opencode-go/__init__.py:126 → OPENCODE_GO_API_KEY;
+    # opencode-zen/__init__.py:120 → OPENCODE_ZEN_API_KEY). Общей переменной
     # OPENCODE_API_KEY в апстриме нет, а remap key_env встроенного провайдера из
-    # Nix невозможен. Поэтому полный токен вписывается ровно один раз — в
-    # OPENCODE_ZEN_API_KEY, — а вторая строка лишь ссылается на него. Загрузчик
-    # .env раскрывает ${VAR} по порядку (hermes_cli/env_loader.py:359-364),
-    # поэтому значение физически лежит в одном месте, в первой строке.
+    # Nix невозможен. Поэтому полный токен вписывается ровно один раз — теперь в
+    # OPENCODE_GO_API_KEY (активный primary), — а вторая строка лишь ссылается
+    # на него. Загрузчик .env раскрывает ${VAR} по порядку
+    # (hermes_cli/env_loader.py:359-364), поэтому значение физически лежит в
+    # одном месте, в первой строке; переменную объявлять ДО ссылки на неё.
     #
-    #   DEEPSEEK_API_KEY=<токен>   — нужен только для платного фолбэка,
+    #   DEEPSEEK_API_KEY=<ключ>    — нужен только для платного фолбэка,
     #                                https://platform.deepseek.com/api_keys.
     #
     # Откуда opencode-токен: service-account key в консоли OpenCode
-    # (https://opencode.ai/console, формат oc_sk_…). Ключ привязан к workspace,
-    # и один и тот же ключ годится и для Zen, и для Go. Собственный креденшл
-    # локального CLI лежит отдельно, в ~/.local/share/opencode/auth.json, и
-    # контейнеру не подходит — в /etc/hermes-agent/env нужен именно console-ключ.
+    # (https://opencode.ai/console → Keys → Add Service Account → Add API Key,
+    # Permissions = «Inference only», формат oc_sk_…). Ключ привязан к
+    # workspace, и один и тот же ключ годится и для Go, и для Zen. Право на Go
+    # даёт НЕ ключ, а активная Go-подписка на том же workspace: тот же ключ без
+    # подписки отвечает Invalid credential. Собственный креденшл локального CLI
+    # лежит отдельно, в ~/.local/share/opencode/auth.json, и контейнеру не
+    # подходит — в /etc/hermes-agent/env нужен именно console-ключ.
     #
-    # Про бесплатный тир (403 FreeTierError): free-тир привязан к клиенту и
-    # аккаунту OpenCode, поэтому запрос от «не-OpenCode» клиента получает на
-    # /zen/v1/chat/completions ответ 403 FreeTierError. Это не поломка: штатный
-    # failover сам уводит сессию на платный DeepSeek (fallback_providers выше) и
-    # вернёт обратно на следующем ходе. Что искать в логах:
-    #   FreeTierError              → free-маршрут отверг клиента (см. выше);
+    # Про бесплатный тир (403 FreeTierError): подтверждено, что free-маршрут
+    # недостижим для сторонних клиентов — на /zen/v1/chat/completions любой
+    # запрос извне OpenCode получает 403 FreeTierError (User-Agent,
+    # x-opencode-session, referer и x-title не помогают). Не тратить на него
+    # время. Free-модели при этом остаются доступны именно ЧЕРЕЗ Go-релей —
+    # когда месячный бюджет Go исчерпан (см. заметку про fallback выше).
+    # Что искать в логах:
+    #   FreeTierError              → клиент упёрся в free-тир (ожидаемо вне
+    #                                 OpenCode; для Go-релея с рабочим ключом —
+    #                                 не должно быть);
+    #   MissingSessionID           → 400: Go-релей не увидел x-opencode-session;
+    #                                 Hermes v0.22.2 шлёт его сам на opencode.ai-
+    #                                 хостах, так что это признак старой версии;
     #   AuthError: Missing API key. → токен не дошёл до контейнера (проверить
     #                                 /etc/hermes-agent/env и перезапуск);
     #   Invalid credential          → токен есть, но не принят (проверить
-    #                                 workspace/срок жизни ключа в консоли).
+    #                                 workspace/срок жизни ключа и активную
+    #                                 Go-подписку на этом workspace).
     #
     # OPENCODE_ZEN_BASE_URL  — запасной выход, если релей /zen/v1 сменит путь:
     #                          Hermes использует её как переопределение базы
