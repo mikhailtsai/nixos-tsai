@@ -260,6 +260,16 @@ in
     # Нужны voice/tts/matrix — переключить на .default (или .tui).
     package = hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.messaging;
 
+    # Дотягиваем python-extra `anthropic` в замыкание пакета. Без него 9 моделей
+    # на Go-релее (claude-haiku-5-5, minimax-m2.5/m2.7/m3, qwen3.6-plus,
+    # qwen3.7-plus/3.7-max, qwen3.8-max, qwen3.8-flash) падают с «The 'anthropic'
+    # package is required»: они идут по anthropic-wire (/zen/go/v1/messages), а
+    # venv лежит в /nix/store (read-only) и lazy-install в managed-режиме
+    # запечатан. Рантайм-обход невозможен: sys.path фиксируется при старте
+    # интерпретатора, а окружение контейнера приходит из docker run.
+    # Это единственный Nix-кусок, который даёт модели «из коробки».
+    extraDependencyGroups = [ "anthropic" ];
+
     # ── Маршрутизация LLM ───────────────────────────────────────────────────
     #
     # Основной маршрут — платный релей OpenCode Go (подписка на том же
