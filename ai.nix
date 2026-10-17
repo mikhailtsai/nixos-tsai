@@ -301,7 +301,14 @@ in
     # full тяжелее примерно на ~700 MB и тянет voice/tts-premium/matrix/
     # azure/bedrock — здесь они не нужны; недостающие extras контейнер доставит сам.
     # Нужны voice/tts/matrix — переключить на .default (или .tui).
-    package = hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.messaging;
+    package = (hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.messaging).override {
+      # Апстрим не передаёт version в callPackage (дефолт "0.0.0"), и install-stamp
+      # получает baseVersion=0.0.0. Из-за этого `hermes --version` врёт, а
+      # `hermes plugins install` отказывает всем плагинам с requires_hermes
+      # («running 0.0.0»). Ставим реальный тег пина; на venv это не влияет —
+      # version участвует только в install-stamp.json и в имени деривации.
+      version = "0.22.2";
+    };
 
     # Дотягиваем python-extra `anthropic` в замыкание пакета. Без него 9 моделей
     # на Go-релее (claude-haiku-5-5, minimax-m2.5/m2.7/m3, qwen3.6-plus,
