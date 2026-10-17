@@ -641,12 +641,23 @@ in
       ExecStartPre = "-${config.virtualisation.docker.package}/bin/docker exec -u hermes hermes-agent ${hermesPkgBin} dashboard --stop";
       # -u hermes: docker резолвит имя внутри контейнера (/etc/passwd: hermes
       # 986:981), поэтому не хардкодим uid и не зависим от null в опциях модуля.
-      ExecStart = "${config.virtualisation.docker.package}/bin/docker exec -u hermes hermes-agent ${hermesPkgBin} dashboard --no-open --skip-build --host 127.0.0.1 --port 9119";
+      # 0.0.0.0 — чтобы панель была доступна с телефона через tailnet
+      # (http://<tailscale-ip>:9119), как это уже сделано для opencode-web.
+      # Наружу в LAN порт не торчит: файрвол открывает 9119 только на
+      # tailscale0. Не-loopback биндинг Hermes разрешает лишь при настроенном
+      # auth-провайдере — у нас dashboard.basic_auth в config.yaml (логин
+      # hermes, пароль в /var/lib/hermes/.hermes/dashboard-password).
+      ExecStart = "${config.virtualisation.docker.package}/bin/docker exec -u hermes hermes-agent ${hermesPkgBin} dashboard --no-open --skip-build --host 0.0.0.0 --port 9119";
       ExecStop = "${config.virtualisation.docker.package}/bin/docker exec -u hermes hermes-agent ${hermesPkgBin} dashboard --stop";
       Restart = "always";
       RestartSec = 5;
     };
   };
+
+  # Доступ к панели с телефона: порт открыт ТОЛЬКО на интерфейсе Tailscale,
+  # в LAN/интернет его нет. Аутентификация — Basic auth (dashboard.basic_auth
+  # в config.yaml, генерируется рантаймом, не в git).
+  networking.firewall.interfaces.${config.services.tailscale.interfaceName}.allowedTCPPorts = [ 9119 ];
 
 
   # ── OpenCode ────────────────────────────────────────────────────────────────
