@@ -62,6 +62,10 @@ in
     options = [ "defaults" "nofail" "x-gvfs-show" ];
   };
 
+  # Скретч агентов и сборок (TMPDIR/BUN_TMPDIR): на Storage, а не в /tmp на
+  # диске. 0700 — каталог только для leet, чужие процессы туда не пишут.
+  systemd.tmpfiles.rules = [ "d /home/leet/Storage/tmp 0700 leet users -" ];
+
   # leet может открывать/закрывать Vault без пароля sudo.
   # Единственный барьер — LUKS-passphrase, cryptsetup спрашивает её каждый раз.
   security.sudo.extraRules = [{

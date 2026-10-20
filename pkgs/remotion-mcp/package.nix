@@ -13,11 +13,11 @@
 
 buildNpmPackage rec {
   pname = "remotion-mcp";
-  version = "4.0.535";
+  version = "4.0.536";
 
   src = ./.;
 
-  npmDepsHash = "sha256-G6MEWXnbkHI9UtJfE8syDwYI2HCV1T17gKVGbTkRn3s=";
+  npmDepsHash = "sha256-YZAIoTk/KTEN0tKnL3ZtjWw8dq1DQQDx97xy5U6CBhA=";
 
   # Nothing to compile — the package ships a prebuilt ESM bundle.
   dontNpmBuild = true;

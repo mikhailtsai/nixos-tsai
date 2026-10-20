@@ -43,32 +43,7 @@
             config.allowUnfree = true;
           };
         in {
-          inherit (ai) code-cursor;
-
-          # codex/opencode в nixpkgs-ai отстают на 1 релиз (апстрим выпускает
-          # каждые пару дней). Пиним на версию/хеши из nixpkgs master, пока
-          # nixpkgs-ai не догонит — тогда override отключается сам.
-          codex =
-            let base = ai.codex; in
-            if ai.lib.versionOlder base.version "0.160.0" then
-              base.overrideAttrs (old: rec {
-                version = "0.160.0";
-                src = ai.fetchFromGitHub {
-                  owner = "openai";
-                  repo = "codex";
-                  tag = "rust-v${version}";
-                  hash = "sha256-UFPv9UK0MBYZfpZ3QlkTXa19ykHwIEo3JdwPtUUrJls=";
-                };
-                cargoHash = "sha256-DMRbIOynO0wGXjBxaXZJNKorD9YQv3fAoRTZ4iZEIE4=";
-                # overrideAttrs не пересчитывает cargoDeps из cargoHash — собираем заново.
-                cargoDeps = ai.rustPlatform.fetchCargoVendor {
-                  name = "codex-${version}";
-                  inherit src;
-                  sourceRoot = "${src.name}/codex-rs";
-                  hash = cargoHash;
-                };
-              })
-            else base;
+          inherit (ai) code-cursor codex;
 
           # opencode V2 (2.x) — в nixpkgs пока нет пакета (PR #569770 не смержен),
           # поэтому берём официальный npm-артефакт, см. pkgs/opencode.

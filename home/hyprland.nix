@@ -338,17 +338,18 @@
     # ==========================================================================
     # СКРИНШОТЫ
     # ==========================================================================
-    # shot-area: выделение области; в полноэкранной игре (держит мышь, focus
-    # не отдаёт из-за stay_focused) без интерактива снимает весь монитор.
-    bind = , Print, exec, shot-area
-    # Весь экран → буфер обмена
-    bind = SHIFT, Print, exec, grimblast copy screen
-    # Область → редактор swappy → сохранить/скопировать
-    bind = $mod, Print, exec, shot-area edit
-    # Весь экран → редактор swappy
-    bind = $mod SHIFT, Print, exec, grimblast save screen - | swappy -f -
-    # Активное окно → буфер
-    bind = ALT, Print, exec, grimblast --freeze copy active
+    # shot: выделение области → файл в ~/Pictures/Screenshots + буфер.
+    # В полноэкранной игре (держит мышь, focus не отдаёт из-за stay_focused)
+    # без интерактива снимает весь монитор.
+    bind = , Print, exec, shot copy area
+    # Весь экран → файл + буфер
+    bind = SHIFT, Print, exec, shot copy screen
+    # Область → редактор swappy → файл + буфер
+    bind = $mod, Print, exec, shot edit area
+    # Весь экран → редактор swappy → файл + буфер
+    bind = $mod SHIFT, Print, exec, shot edit screen
+    # Активное окно → файл + буфер
+    bind = ALT, Print, exec, shot copy active
     # Аварийная отмена зависшего выделения области
     bind = $mod, ESCAPE, exec, shot-cancel
 
@@ -464,6 +465,27 @@
     # Отключить blur для видео
     windowrule = no_blur on, match:class mpv
     windowrule = no_blur on, match:fullscreen 1
+
+    # ==========================================================================
+    # ChatGPT: окно-питомец (Marsi) — плавающий прозрачный overlay
+    # ==========================================================================
+    # У приложения отдельное окно-питомец: class/title те же, что у главного чата
+    # (chatgpt / ChatGPT), поэтому единственный отличимый признак — floating
+    # (питомец всегда плавающий, главное окно — тайловое). Окно целиком прозрачное
+    # и создаётся с resizable:false, поэтому рамка/тень рисуются вокруг всего
+    # прямоугольника 1132x2274 — это и есть «большие некрасивые рамки».
+    windowrule = border_size 0, match:class ^chatgpt$, match:float 1
+    windowrule = rounding 0, match:class ^chatgpt$, match:float 1
+    windowrule = no_shadow on, match:class ^chatgpt$, match:float 1
+    windowrule = no_anim on, match:class ^chatgpt$, match:float 1
+    windowrule = no_blur on, match:class ^chatgpt$, match:float 1
+    # Клики: окно нельзя уменьшить (resizable:false), а Hyprland намеренно не
+    # учитывает input region у toplevel-окон, поэтому «клик только по графике»
+    # недостижимо. Работает только no_focus — окно целиком перестаёт ловить мышь
+    # (клики уходят в окно под ним), но и сам питомец становится некликабельным:
+    # его нельзя таскать и закрывать правой кнопкой, прятать только из самого
+    # приложения. Раскомментируй, если такой размен тебя устраивает:
+    # windowrule = no_focus on, match:class ^chatgpt$, match:float 1
 
     # ==========================================================================
     # ЖЕСТЫ ТАЧПАДА

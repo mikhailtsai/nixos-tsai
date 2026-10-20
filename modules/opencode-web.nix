@@ -57,6 +57,10 @@ in
       # не появится подтверждённый V2-аналог.
       OPENCODE_DISABLE_CLAUDE_CODE_SKILLS = "1";
       OPENCODE_AGENTS_HOME = "${homeDir}/Projects/home/opencode-agents";
+      # Скретч opencode/Bun — на Storage, а не в /tmp на диске: Bun распаковывает
+      # туда нативные библиотеки, и без BUN_TMPDIR он игнорирует TMPDIR.
+      TMPDIR     = "${homeDir}/Storage/tmp";
+      BUN_TMPDIR = "${homeDir}/Storage/tmp";
     };
 
     # Инструменты для агента. Используем опцию `path` (список пакетов), а НЕ

@@ -18,6 +18,7 @@
     ./modules/azerothcore  # WoW WotLK 3.3.5a private server (выключен пока enable = false)
     ./modules/l2-hf-bots        # Lineage II High Five + автономные боты (L2J Mobius CT 2.6)
     ./modules/forge-images.nix  # Forge Images (локальная генерация изображений) + LAN
+    ./modules/hermes-hostdiag.nix  # read-only снимки состояния хоста для Hermes
   ];
 
   nix.settings = {
@@ -28,6 +29,28 @@
     max-jobs = 4;
     cores = 8;
     max-substitution-jobs = 8;
+    # Диск заполнен на 90%: при сборке Nix сам запускает GC, когда свободного
+    # места меньше 10 ГиБ, и чистит до 20 ГиБ. Иначе сборка падает на ENOSPC.
+    min-free = 10 * 1024 * 1024 * 1024;
+    max-free = 20 * 1024 * 1024 * 1024;
+  };
+  # Недельная чистка старых генераций (профили system и home-manager растут
+  # молча) плюс ретроактивная дедупликация store через жёсткие ссылки —
+  # auto-optimise-store выше дедуплицирует только новые пути.
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 14d";
+  };
+  nix.optimise.automatic = true;
+  # Журнал разросся до 1.8 ГБ без всякого лимита. Держим 1 ГБ (файл 200 МБ,
+  # месяц истории) и всегда оставляем 10 ГБ свободного места под /var/log.
+  # extraConfig в этом nixpkgs удалён — те же ключи задаются через settings.Journal.
+  services.journald.settings.Journal = {
+    SystemMaxUse = "1G";
+    SystemMaxFileSize = "200M";
+    MaxRetentionSec = "1month";
+    SystemKeepFree = "10G";
   };
   # Сборки с низким приоритетом CPU/IO — десктоп и сервисы не фризятся.
   nix.daemonCPUSchedPolicy = "batch";
@@ -362,6 +385,15 @@
     device = "/var/lib/swapfile";
     size   = 16 * 1024; # 16 ГБ (в МБ)
   }];
+
+  # ── /tmp ──────────────────────────────────────────────────────────────────────
+  # NixOS по умолчанию НЕ чистит /tmp при загрузке и не сокращает вендорное
+  # правило 10d — скретч агентов дорос до ~70 ГБ. Оставляем /tmp на диске, а не
+  # в tmpfs: 32 ГБ RAM при zram, заполненном на ~93%, десятки ГБ не выдержат.
+  # Вместо этого чистим детерминированно при загрузке (D! /tmp) и сокращаем
+  # aging до 3 дней; крупный скретч агентов уводим на Storage через TMPDIR.
+  boot.tmp.cleanOnBoot = true;
+  systemd.tmpfiles.rules = [ "q /tmp 1777 root root 3d" ];
 
   # ── systemd-oomd ──────────────────────────────────────────────────────────────
   # Отстреливает самый жирный процесс ДО тотального livelock'а, вместо вечного фриза.

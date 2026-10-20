@@ -28,6 +28,10 @@
     OPENCODE_AGENTS_HOME = "${config.home.homeDirectory}/Projects/home/opencode-agents";
   };
 
+  # Скретч агентов и сборок (TMPDIR) — на Storage: /tmp на диске быстро
+  # разрастался до десятков ГБ. environment.d применяется при следующем логине.
+  systemd.user.sessionVariables.TMPDIR = "${config.home.homeDirectory}/Storage/tmp";
+
   home.sessionPath = [ "$HOME/.local/bin" "$HOME/.npm-global/bin" ];
 
   programs.home-manager.enable = true;
