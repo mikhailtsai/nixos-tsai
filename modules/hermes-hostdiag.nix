@@ -119,15 +119,33 @@ let
         grep по OOM/GPF/lockup, список boot'ов;
       * `system.txt` — ядро, uptime, loadavg, failed units, текущая генерация NixOS;
       * `disk.txt` — `df`, `df -i`, размеры store/journal/state, disk-usage журнала;
-      * `memory.txt` — meminfo, PSI, swap, top-25 процессов по RSS;
+      * `memory.txt` — meminfo, PSI, swap, zram (`mm_stat`), память cgroup
+        контейнеров и `system.slice`, top-25 процессов по RSS;
       * `docker.txt` — список контейнеров, `docker stats`, лимиты памяти;
       * `gpu.txt` — `nvidia-smi` (если GPU и драйвер есть).
+
+      Самый свежий снимок всегда доступен как `/hostdiag/latest/<файл>`, например
+      `/hostdiag/latest/memory.txt`: `latest` — относительный симлинк на каталог
+      с самым новым `<stamp>` (в контейнере абсолютный хостовый путь не
+      резолвится). Сам `latest` — не снимок, а только ссылка на него.
 
       Доступ у агента ТОЛЬКО на чтение: каталог смонтирован read-only, каталоги
       снимков — 0750, файлы — 0640, владелец root, группа `hermes`. Записать
       сюда или подменить файл симлинком из контейнера нельзя.
       Старое удаляется автоматически: хранятся 100 последних снимков и ничего
       старше 2 суток.
+
+      ## Как читать память
+
+      Давление на память оценивайте по `/proc/pressure/memory` (строка `full`)
+      и по `MemAvailable`, а не по проценту swap. Часть swap на этом хосте —
+      zram (рядом с swapfile), и `SwapTotal−SwapFree` считает несжатый
+      логический размер zram как занятый, поэтому завышает реальную
+      занятость. Реально занятую RAM показывает `mem_used_total` из `mm_stat`,
+      сжатый объём — `compr_data_size` (сравнивайте с `orig_data_size`).
+      `memory.current` контейнера включает reclaimable page cache, а
+      `docker stats` показывает working set, поэтому это разные числа; лимит
+      задаёт `memory.max`, разбивка — `memory.stat`.
 
       ## Ежедневная инвентаризация диска
 
@@ -277,6 +295,53 @@ let
         section "swapon --show"
         swapon --show 2>&1 || true
 
+        # Часть swap на этом хосте — zram (рядом с 16 GiB swapfile), а
+        # SwapTotal/SwapFree считают несжатый логический размер zram как
+        # занятый. Поэтому SwapTotal−SwapFree систематически завышает реальную
+        # занятость памяти. Реально потребляемую RAM показывает mem_used_total,
+        # а степень сжатия — compr_data_size / orig_data_size из mm_stat.
+        section "zram (сжатая память)"
+        for z in /sys/block/zram*/; do
+          # Глоб без совпадений остаётся литералом — молча пропускаем.
+          [ -d "$z" ] || continue
+          echo "--- $z"
+          echo "disksize=$(cat "$z/disksize" 2>/dev/null || echo '?') comp_algorithm=$(cat "$z/comp_algorithm" 2>/dev/null || echo '?')"
+          echo "mm_stat: $(cat "$z/mm_stat" 2>/dev/null || echo 'недоступно')"
+          echo "mm_stat: orig_data_size=несжатый объём, compr_data_size=сжатый объём, mem_used_total=занятая RAM (реальное потребление)"
+        done
+
+        # memory.current включает reclaimable page cache, поэтому он всегда
+        # больше working set из `docker stats` (тот вычитает неактивный кэш) —
+        # сравнивать эти числа напрямую нельзя, для лимитов важен memory.max.
+        section "cgroup контейнеров (memory.current / memory.max / memory.stat)"
+        # --no-trunc обязателен: имя scope содержит ПОЛНЫЙ 64-символьный id,
+        # а docker ps -q по умолчанию печатает 12 символов.
+        ids="$(docker ps -q --no-trunc 2>/dev/null || true)"
+        if [ -n "$ids" ]; then
+          echo "$ids" | while IFS= read -r id; do
+            name="$(docker inspect -f '{{.Name}}' "$id" 2>/dev/null || true)"
+            cg="/sys/fs/cgroup/system.slice/docker-$id.scope"
+            echo "--- id=$id name=''${name:-?} cgroup=$cg"
+            if [ -d "$cg" ]; then
+              echo "memory.current=$(cat "$cg/memory.current" 2>/dev/null || echo '?')"
+              echo "memory.max=$(cat "$cg/memory.max" 2>/dev/null || echo '?')"
+              grep -E '^(anon|file|kernel|sock|shmem) ' "$cg/memory.stat" 2>/dev/null || true
+              echo "memory.pressure:"
+              cat "$cg/memory.pressure" 2>/dev/null || echo "недоступно"
+            else
+              echo "cgroup не найден: $cg (контейнер не под systemd cgroup driver?)"
+            fi
+          done
+        else
+          echo "нет запущенных контейнеров или docker недоступен"
+        fi
+
+        section "host system.slice memory.current/memory.max"
+        # Корневого /sys/fs/cgroup/memory.current на cgroup v2 нет: у root
+        # slice нет своего memory-контроллера, читаем system.slice.
+        echo "memory.current=$(cat /sys/fs/cgroup/system.slice/memory.current 2>/dev/null || echo '?')"
+        echo "memory.max=$(cat /sys/fs/cgroup/system.slice/memory.max 2>/dev/null || echo '?')"
+
         section "top-25 процессов по RSS"
         ps -eo pid,comm,%mem,rss --sort=-rss 2>&1 | head -n 26 || true
       } > "$OUT/memory.txt" 2>&1
@@ -331,6 +396,18 @@ let
             find -P "$BASE" -mindepth 1 -maxdepth 1 -type d -name "$old" \
               -exec rm -rf -- {} + 2>/dev/null || true
           done || true
+
+      # latest — ОТНОСИТЕЛЬНЫЙ симлинк на самый новый снимок: в контейнере база
+      # смонтирована read-only как /hostdiag, поэтому абсолютный путь
+      # /var/lib/hermes-hostdiag/<stamp> там не резолвится, а `latest/<файл>`
+      # работает. Сначала создаём временную ссылку и переименовываем её поверх
+      # latest: rename атомарен, и читатель никогда не увидит повисшую ссылку
+      # (mv -T не даст «переехать внутрь», если latest вдруг станет каталогом).
+      # Публикация ссылки не повод валить запуск — снимок уже записан.
+      {
+        ln -sfn "$(basename "$OUT")" "$BASE/.latest.tmp" \
+          && mv -Tf "$BASE/.latest.tmp" "$BASE/latest"
+      } || true
     '';
   };
 

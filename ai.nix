@@ -897,16 +897,22 @@ in
     # Никаких rw-монтирований хостовых путей здесь быть не должно.
     # /hostdiag — снимки hermes-hostdiag: база root-owned и смонтирована только
     # на чтение, поэтому агент не может подменить в ней файлы симлинками.
-    # /etc/zoneinfo — база часовых поясов хоста. В образе ubuntu:24.04 нет
-    # tzdata (каталога /usr/share/zoneinfo просто нет), поэтому один лишь
-    # TZ=... glibc молча игнорирует и падает в UTC. /etc/zoneinfo — стабильный
-    # симлинк NixOS: Docker раскрывает его в текущий стор-каталог tzdata при
-    # создании контейнера, поэтому обновление tzdata НЕ меняет
-    # containerIdentity и не пересоздаёт контейнер.
+    # /usr/share/zoneinfo НЕ монтируется. В образе ubuntu:24.04 нет tzdata
+    # (каталога /usr/share/zoneinfo просто нет), поэтому один лишь TZ=...
+    # glibc молча игнорирует и падает в UTC — именно поэтому раньше сюда
+    # ro-монтировали /etc/zoneinfo. Но такое монтирование ломает первичный
+    # provisioning: entrypoint ставит nodejs, тот тянет tzdata, а dpkg не может
+    # распаковать пакет в read-only каталог. 2026-10-23: tzdata 2026e →
+    # `unable to create '/usr/share/zoneinfo/Africa/Abidjan.dpkg-new':
+    # Read-only file system` → entrypoint exit 100 → systemd start-limit-hit,
+    # контейнер лёг. Контракт: tzdata приходит из собственного provisioning
+    # контейнера (архив Ubuntu), хост даёт только TZ=${vars.timezone} (см.
+    # extraOptions ниже). Монтирование поверх /usr/share/zoneinfo не возвращать.
+    # Инвариант «никаких rw-монтирований хостовых путей» сохранён: mount убран,
+    # а не переведён в rw.
     container.extraVolumes = [
       "/var/log/journal:/host-journal:ro"
       "/var/lib/hermes-hostdiag:/hostdiag:ro"
-      "/etc/zoneinfo:/usr/share/zoneinfo:ro"
     ];
 
     # /dev/kvm — аппаратное ускорение Android-эмулятора. Без KVM
